@@ -1,8 +1,8 @@
-// AbsensiKu Service Worker v4
+// AbsensiKu Service Worker v5
 // + CBT soal cache untuk performa 300-500 siswa bersamaan
 
-const CACHE_NAME = 'absensiKu-v4';
-const CBT_CACHE  = 'absensiKu-cbt-v1';
+const CACHE_NAME = 'absensiKu-v5';
+const CBT_CACHE  = 'absensiKu-cbt-v2';
 
 const STATIC_ASSETS = [
   './',
@@ -91,5 +91,9 @@ self.addEventListener('message', e => {
     caches.delete(CBT_CACHE).then(() => {
       e.ports[0].postMessage('CBT cache cleared');
     });
+  }
+  // Force activate SW baru segera
+  if (e.data && e.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
