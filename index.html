@@ -5642,27 +5642,26 @@ ReactDOM.createRoot(document.getElementById('root')).render(h(ErrorBoundary,null
 <!-- PWA Install Prompt -->
 <script>
 if('serviceWorker' in navigator){
-  // Paksa unregister SW lama jika cache version berbeda
+  // Paksa update SW yang sudah terdaftar
   navigator.serviceWorker.getRegistrations().then(function(regs){
-    regs.forEach(function(reg){
-      reg.update(); // cek update SW terbaru
-    });
+    regs.forEach(function(reg){ reg.update(); });
   });
 
   window.addEventListener('load', function(){
-    var hostname = window.location.hostname;
-    var isPreview = hostname.includes('claudeusercontent') || hostname === '127.0.0.1';
-    if(isPreview) return;
-
-    var base = window.location.pathname.replace(/\/[^\/]*$/, '/');
+    // Hitung base path yang benar untuk GitHub Pages subfolder
+    // Contoh: https://user.github.io/repo/ → base = '/repo/'
+    var pathParts = window.location.pathname.split('/');
+    pathParts.pop(); // hapus nama file (index.html atau kosong)
+    var base = pathParts.join('/') + '/';
+    if(base === '/') base = '/';
     var swPath = base + 'sw.js';
+
+    console.log('[AbsensiKu] Mendaftarkan SW di:', swPath, 'scope:', base);
 
     navigator.serviceWorker.register(swPath, {scope: base})
       .then(function(r){
-        console.log('[AbsensiKu] SW terdaftar:', r.scope);
-        // Cek update langsung saat register
+        console.log('[AbsensiKu] SW terdaftar, scope:', r.scope);
         r.update();
-        // Jika ada SW baru waiting, langsung activate
         if(r.waiting){
           r.waiting.postMessage({type:'SKIP_WAITING'});
         }
@@ -5671,16 +5670,15 @@ if('serviceWorker' in navigator){
           if(newSW){
             newSW.addEventListener('statechange', function(){
               if(newSW.state === 'installed' && navigator.serviceWorker.controller){
-                // Reload untuk pakai SW baru
                 window.location.reload();
               }
             });
           }
         });
-        showPWAStatus('SW aktif', '#00ff88');
+        showPWAStatus('SW aktif ✓', '#00ff88');
       })
       .catch(function(e){
-        console.warn('[AbsensiKu] SW gagal:', e.message);
+        console.warn('[AbsensiKu] SW gagal daftar:', e.message);
         showPWAStatus('SW gagal: '+e.message, '#f87171');
       });
   });
