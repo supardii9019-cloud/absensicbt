@@ -3441,22 +3441,34 @@ function genId(){ return Date.now().toString(36)+Math.random().toString(36).slic
 function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 
 // ── ADMIN CBT PANEL ────────────────────────────────────────────────
-function AdminCBT({students,settings}) {
+function AdminCBT({students,settings,isSuperAdmin}) {
   const [tab,setTab]=useState('exams');
   const [exams,setExams]=useState([]);
   const [loading,setLoading]=useState(true);
+  const [error,setError]=useState(null);
   const [editExam,setEditExam]=useState(null);
   const [editQuestions,setEditQuestions]=useState(null);
   const [viewResult,setViewResult]=useState(null);
 
   const reload=useCallback(async()=>{
     setLoading(true);
-    const e=await DB.getCbtExams();
-    setExams(e);setLoading(false);
+    setError(null);
+    try {
+      const e=await DB.getCbtExams();
+      setExams(e||[]);
+    } catch(err) {
+      setError('Gagal memuat data ujian: '+err.message);
+    }
+    setLoading(false);
   },[]);
   useEffect(()=>{reload();},[reload]);
 
   if(loading) return h(LoadingScreen,{msg:'Memuat data ujian...'});
+  if(error) return h('div',{style:{padding:'40px',textAlign:'center',color:'#f87171',fontFamily:MONO,fontSize:'12px'}},
+    h('div',{style:{fontSize:'32px',marginBottom:'12px'}},'⚠️'),
+    h('p',null,error),
+    h('button',{onClick:reload,style:{marginTop:'16px',padding:'10px 20px',borderRadius:'10px',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'11px'}},'🔄 Coba Lagi')
+  );
 
   return h('div',null,
     // Header
@@ -4840,10 +4852,8 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
           page==='announcements'&&h(AdminAnnouncements,{announcements:anns,onReload:reload,students}),
           page==='devices'&&h(AdminDevices,{students,onReload:reload}),
           page==='location'&&h(AdminLocation,{settings,onSave:saveSettings}),
-          page==='qrscan'&&h(AdminQRScanner,{students,records,settings,onReload:reload}),
           page==='wa'&&h(AdminWA,{students,records,settings,onReload:reload}),
           page==='teachers'&&h(AdminTeachers,{onReload:reload}),
-          page==='cbt'&&h(AdminCBT,{students,settings,isSuperAdmin}),
           page==='cbt'&&h(AdminCBT,{students,settings,isSuperAdmin}),
           page==='rekap'&&h(AdminRekapBulanan,{records,students,settings,holidays}),
           page==='holidays'&&h(AdminHolidays,{holidays,onReload:reload}),
@@ -4886,6 +4896,7 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
       page==='qrscan'&&h(AdminQRScanner,{students,records,settings,onReload:reload}),
       page==='wa'&&h(AdminWA,{students,records,settings,onReload:reload}),
       page==='teachers'&&h(AdminTeachers,{onReload:reload}),
+      page==='cbt'&&h(AdminCBT,{students,settings,isSuperAdmin}),
       page==='rekap'&&h(AdminRekapBulanan,{records,students,settings,holidays}),
       page==='holidays'&&h(AdminHolidays,{holidays,onReload:reload}),
       page==='schedule'&&h(AdminSchedule,{settings,onSave:saveSettings}),
@@ -4893,7 +4904,7 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
       page==='backup'&&(isSuperAdmin?h(AdminBackup,{students,records,leaves,announcements:anns,settings}):h(AccessDenied,{msg:'Backup & Restore'})),
       page==='activity'&&h(AdminActivityLog),
       page==='settings'&&(isSuperAdmin?h(AdminSettings,{settings,onSave:saveSettings}):h(AccessDenied,{msg:'Pengaturan Sekolah'})),
-          page==='password'&&(isSuperAdmin?h(AdminPasswordManager,{students,adminData}):h(AccessDenied,{msg:'Reset Password'})),
+      page==='password'&&(isSuperAdmin?h(AdminPasswordManager,{students,adminData}):h(AccessDenied,{msg:'Reset Password'})),
       page==='settings'&&isSuperAdmin&&h('div',{style:Object.assign({},gl,{borderRadius:'16px',padding:'20px',border:'1px solid rgba(239,68,68,.15)',marginTop:'20px'})},h('p',{style:{fontFamily:ORB,fontSize:'12px',color:'rgba(248,113,113,.7)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'12px'}},'Danger Zone'),h('button',{onClick:clearRecords,style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'12px',fontFamily:MONO,color:'#f87171',border:'1px solid rgba(239,68,68,.3)',background:'rgba(239,68,68,.05)',cursor:'pointer'}},'Hapus Semua Absensi'))
     ),
     h(NavBar,{items:nav,active:page,onSelect:setPage}),
@@ -4992,7 +5003,6 @@ function StudentPanel({student,onLogout,isDemo=false}) {
             page==='history'&&h(StudentHistory,{student,records,settings}),
             page==='kartu'&&h(StudentKartu,{student,settings}),
             page==='cbt'&&h(StudentCBT,{student,settings,isDemo}),
-            page==='cbt'&&h(StudentCBT,{student,settings,isDemo}),
             page==='leave'&&h(StudentLeave,{student,leaves,onReload:reload,isDemo}),
             page==='profile'&&h(StudentProfile,{student,records,settings})
           ),
@@ -5025,6 +5035,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
       page==='history'&&h(StudentHistory,{student,records,settings}),
       page==='calendar'&&h(StudentCalendar,{student,records,settings,leaves}),
       page==='kartu'&&h(StudentKartu,{student,settings}),
+      page==='cbt'&&h(StudentCBT,{student,settings,isDemo}),
       page==='leave'&&h(StudentLeave,{student,leaves,onReload:reload}),
       page==='profile'&&h(StudentProfile,{student,records,settings})
     ),
@@ -5429,6 +5440,7 @@ function GuruMapelPanel({teacher, onLogout, isDemo=false}) {
     h('main',{style:{position:'relative',zIndex:10,maxWidth:'512px',margin:'0 auto',padding:'20px 16px 100px'}},
       page==='absen' && h(MapelAbsen, {teacher, students:allStudents, kelasList, settings, onReload:reload, isDemo}),
       page==='rekap' && h(MapelRekap, {teacher, students:allStudents, subjAtt, kelasList}),
+      page==='cbt'   && h(GuruCBT, {teacher, students:allStudents, isDemo}),
     ),
     h(NavBar, {items:nav, active:page, onSelect:setPage}),
     showTheme && h(ThemePicker, {onClose:()=>setShowTheme(false)})
