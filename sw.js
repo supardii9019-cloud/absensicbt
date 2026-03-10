@@ -1,27 +1,16 @@
-// AbsensiKu Service Worker v5
-// + CBT soal cache untuk performa 300-500 siswa bersamaan
+// AbsensiKu Service Worker v6
+// Strategi: Network First untuk HTML, Cache First hanya untuk CBT soal & media
 
-const CACHE_NAME = 'absensiKu-v5';
+const CACHE_NAME = 'absensiKu-v6';
 const CBT_CACHE  = 'absensiKu-cbt-v2';
 
-const STATIC_ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icons/icon-192.png',
-  './icons/icon-512.png'
-];
-
-// ── Install — cache aset statis ────────────────────────────────────
+// ── Install — langsung skipWaiting, TIDAK pre-cache HTML
+// (pre-cache HTML di GitHub Pages subfolder sering gagal → SW tidak aktif)
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(c => c.addAll(STATIC_ASSETS))
-      .then(() => self.skipWaiting())
-  );
+  e.waitUntil(self.skipWaiting());
 });
 
-// ── Activate — hapus cache lama ────────────────────────────────────
+// ── Activate — hapus semua cache lama, klaim semua client ──────────
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -35,29 +24,30 @@ self.addEventListener('activate', e => {
 
 // ── Fetch — strategi cache ─────────────────────────────────────────
 self.addEventListener('fetch', e => {
+  // Abaikan request non-GET
+  if (e.request.method !== 'GET') return;
+
   const url = new URL(e.request.url);
 
-  // 1. Supabase API soal CBT → Cache First (soal jarang berubah saat ujian)
+  // 1. Supabase API soal CBT → Cache First + background update
   if (url.hostname.includes('supabase.co') &&
-      url.pathname.includes('cbt_questions') &&
-      e.request.method === 'GET') {
+      url.pathname.includes('cbt_questions')) {
     e.respondWith(
       caches.open(CBT_CACHE).then(async cache => {
         const cached = await cache.match(e.request);
         if (cached) {
-          // Background update agar tetap fresh
           fetch(e.request).then(r => { if(r.ok) cache.put(e.request, r.clone()); }).catch(()=>{});
           return cached;
         }
         const fresh = await fetch(e.request);
         if (fresh.ok) cache.put(e.request, fresh.clone());
         return fresh;
-      })
+      }).catch(() => fetch(e.request))
     );
     return;
   }
 
-  // 2. Supabase Storage media (gambar/audio/video) → Cache First
+  // 2. Supabase Storage media CBT → Cache First
   if (url.pathname.includes('/storage/v1/object/public/cbt-media/')) {
     e.respondWith(
       caches.open(CBT_CACHE).then(async cache => {
@@ -66,34 +56,27 @@ self.addEventListener('fetch', e => {
         const fresh = await fetch(e.request);
         if (fresh.ok) cache.put(e.request, fresh.clone());
         return fresh;
-      })
+      }).catch(() => fetch(e.request))
     );
     return;
   }
 
-  // 3. Supabase API lain (absensi, sessions, dll) → Network First
-  if (url.hostname.includes('supabase.co')) {
-    e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
-    );
-    return;
-  }
-
-  // 4. Aset statis app → Cache First
+  // 3. Semua request lain (termasuk HTML, Supabase API) → Network First
+  // Tidak di-cache agar selalu fresh dari server
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request).catch(() => caches.match(e.request))
   );
 });
 
-// ── Message: clear CBT cache (admin bisa trigger setelah update soal)
+// ── Message handler ────────────────────────────────────────────────
 self.addEventListener('message', e => {
+  if (!e.data) return;
   if (e.data === 'CLEAR_CBT_CACHE') {
     caches.delete(CBT_CACHE).then(() => {
-      e.ports[0].postMessage('CBT cache cleared');
+      if (e.ports && e.ports[0]) e.ports[0].postMessage('CBT cache cleared');
     });
   }
-  // Force activate SW baru segera
-  if (e.data && e.data.type === 'SKIP_WAITING') {
+  if (e.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
