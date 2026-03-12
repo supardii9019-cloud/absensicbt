@@ -40,17 +40,7 @@ input,textarea,select{font-size:16px!important}
 .afiu{animation:fade-in-up .6s ease-out forwards}
 .di{background:var(--input-bg);border:1px solid var(--accent-dim);color:var(--text-primary);outline:none;font-family:'Inter',sans-serif;transition:all .3s;width:100%}
 .di:focus{border-color:var(--accent);box-shadow:0 0 20px var(--accent-bg)}
-.di::placeholder{color:var(--text-muted)}
-/* ── Pastikan teks selalu kontras ─── */
-p,span,label,h1,h2,h3,h4,h5,h6,li,td,th,div{color:inherit}
-/* Minimum contrast helpers */
-.text-readable{color:var(--text-primary)!important}
-.text-sub{color:var(--text-secondary)!important}
-.text-hint{color:var(--text-muted)!important}
-/* Input & select teks selalu primary */
-input,select,textarea{color:var(--text-primary)!important;background:var(--input-bg)}
-/* Tombol teks harus terbaca */
-button{color:inherit}
+.di::placeholder{color:var(--text-dim)}
 input[type=date],select{color-scheme:light dark}
 #root{overscroll-behavior:none;height:100%;min-height:100vh}
 </style>
@@ -63,9 +53,9 @@ input[type=date],select{color-scheme:light dark}
   --border:rgba(0,240,255,.1);
   --border-s:rgba(0,240,255,.15);
   --text-primary:#ffffff;
-  --text-secondary:rgba(255,255,255,.82);
-  --text-muted:rgba(255,255,255,.58);
-  --text-dim:rgba(255,255,255,.38);
+  --text-secondary:rgba(255,255,255,.6);
+  --text-muted:rgba(255,255,255,.3);
+  --text-dim:rgba(255,255,255,.15);
   --accent:#00f0ff;
   --accent-dim:rgba(0,240,255,.2);
   --accent-bg:rgba(0,240,255,.08);
@@ -193,12 +183,12 @@ body, #root { overflow-x: hidden !important; max-width: 100vw; }
     border: 1px solid transparent; cursor: pointer; width: 100%;
     font-family: 'JetBrains Mono', monospace; font-size: 11px;
     text-align: left; transition: all .15s; background: transparent;
-    color: var(--text-secondary); letter-spacing: 0.03em;
+    color: var(--text-muted); letter-spacing: 0.03em;
   }
   .sb-item:hover   { background: var(--accent-bg); color: var(--text-secondary); }
   .sb-item.act     { background: var(--accent-bg) !important; color: var(--accent) !important; border-color: var(--accent-dim) !important; }
   .sb-item.sub     { padding-left: 26px; font-size: 10px; }
-  .sb-section-lbl  { font-family: 'JetBrains Mono',monospace; font-size: 8px; letter-spacing: .3em; color: var(--text-muted); padding: 10px 12px 4px; }
+  .sb-section-lbl  { font-family: 'JetBrains Mono',monospace; font-size: 8px; letter-spacing: .3em; color: var(--text-dim); padding: 10px 12px 4px; }
   .sb-action-btn   { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; cursor: pointer; width: 100%; font-family: 'JetBrains Mono',monospace; font-size: 11px; }
   .pc-topbar { background: var(--header-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 14px 36px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 20; }
   .pc-page-title { font-family: 'Orbitron',monospace; font-size: 16px; font-weight: bold; color: var(--text-primary); letter-spacing: .08em; }
@@ -940,7 +930,7 @@ const THEMES = {
     name:'Cyber Cyan', mode:'dark', preview:'#00f0ff',
     '--bg-base':'#0a0a0f','--bg-panel':'rgba(15,15,26,.7)','--bg-panel-s':'rgba(15,15,26,.9)',
     '--bg-card':'var(--bg-card)','--border':'rgba(0,240,255,.1)','--border-s':'rgba(0,240,255,.15)',
-    '--text-primary':'#ffffff','--text-secondary':'rgba(255,255,255,.82)','--text-muted':'rgba(255,255,255,.58)','--text-dim':'rgba(255,255,255,.38)',
+    '--text-primary':'#ffffff','--text-secondary':'var(--text-secondary)','--text-muted':'var(--text-muted)','--text-dim':'var(--text-dim)',
     '--accent':'#00f0ff','--accent-dim':'rgba(0,240,255,.2)','--accent-bg':'rgba(0,240,255,.08)',
     '--accent2':'#a855f7','--accent2-dim':'rgba(168,85,247,.2)','--accent2-bg':'rgba(168,85,247,.08)',
     '--input-bg':'rgba(0,240,255,.05)','--nav-bg':'rgba(15,15,26,.95)','--header-bg':'rgba(15,15,26,.9)','--particle-color':'#00f0ff',
@@ -949,7 +939,7 @@ const THEMES = {
     name:'Neon Purple', mode:'dark', preview:'#a855f7',
     '--bg-base':'#08050f','--bg-panel':'rgba(20,10,35,.7)','--bg-panel-s':'rgba(20,10,35,.9)',
     '--bg-card':'var(--bg-card)','--border':'rgba(168,85,247,.15)','--border-s':'rgba(168,85,247,.2)',
-    '--text-primary':'#ffffff','--text-secondary':'rgba(255,255,255,.82)','--text-muted':'rgba(255,255,255,.58)','--text-dim':'rgba(255,255,255,.38)',
+    '--text-primary':'#ffffff','--text-secondary':'var(--text-secondary)','--text-muted':'var(--text-muted)','--text-dim':'var(--text-dim)',
     '--accent':'#a855f7','--accent-dim':'rgba(168,85,247,.25)','--accent-bg':'rgba(168,85,247,.1)',
     '--accent2':'#ec4899','--accent2-dim':'rgba(236,72,153,.2)','--accent2-bg':'rgba(236,72,153,.08)',
     '--input-bg':'rgba(168,85,247,.06)','--nav-bg':'rgba(20,10,35,.95)','--header-bg':'rgba(20,10,35,.9)','--particle-color':'#a855f7',
@@ -958,7 +948,7 @@ const THEMES = {
     name:'Matrix Green', mode:'dark', preview:'#00ff88',
     '--bg-base':'#050f08','--bg-panel':'rgba(5,20,12,.75)','--bg-panel-s':'rgba(5,20,12,.95)',
     '--bg-card':'rgba(0,255,136,.02)','--border':'rgba(0,255,136,.12)','--border-s':'rgba(0,255,136,.18)',
-    '--text-primary':'#f0fff4','--text-secondary':'rgba(240,255,244,.85)','--text-muted':'rgba(240,255,244,.6)','--text-dim':'rgba(240,255,244,.4)',
+    '--text-primary':'#e0ffe8','--text-secondary':'rgba(224,255,232,.6)','--text-muted':'rgba(224,255,232,.3)','--text-dim':'rgba(224,255,232,.15)',
     '--accent':'#00ff88','--accent-dim':'rgba(0,255,136,.22)','--accent-bg':'rgba(0,255,136,.08)',
     '--accent2':'#00d4aa','--accent2-dim':'rgba(0,212,170,.2)','--accent2-bg':'rgba(0,212,170,.08)',
     '--input-bg':'rgba(0,255,136,.05)','--nav-bg':'rgba(5,20,12,.97)','--header-bg':'rgba(5,20,12,.92)','--particle-color':'#00ff88',
@@ -967,7 +957,7 @@ const THEMES = {
     name:'Solar Flare', mode:'dark', preview:'#ff8800',
     '--bg-base':'#0f0800','--bg-panel':'rgba(26,15,0,.75)','--bg-panel-s':'rgba(26,15,0,.95)',
     '--bg-card':'rgba(255,136,0,.02)','--border':'rgba(255,136,0,.12)','--border-s':'rgba(255,136,0,.18)',
-    '--text-primary':'#fff8f0','--text-secondary':'rgba(255,248,240,.85)','--text-muted':'rgba(255,248,240,.62)','--text-dim':'rgba(255,248,240,.42)',
+    '--text-primary':'#fff8f0','--text-secondary':'rgba(255,248,240,.6)','--text-muted':'rgba(255,248,240,.3)','--text-dim':'rgba(255,248,240,.15)',
     '--accent':'#ff8800','--accent-dim':'rgba(255,136,0,.22)','--accent-bg':'rgba(255,136,0,.08)',
     '--accent2':'#ff3366','--accent2-dim':'rgba(255,51,102,.2)','--accent2-bg':'rgba(255,51,102,.08)',
     '--input-bg':'rgba(255,136,0,.05)','--nav-bg':'rgba(26,15,0,.97)','--header-bg':'rgba(26,15,0,.92)','--particle-color':'#ff8800',
@@ -976,7 +966,7 @@ const THEMES = {
     name:'Sakura Night', mode:'dark', preview:'#fb7185',
     '--bg-base':'#0f050a','--bg-panel':'rgba(25,8,18,.75)','--bg-panel-s':'rgba(25,8,18,.95)',
     '--bg-card':'rgba(251,113,133,.02)','--border':'rgba(251,113,133,.12)','--border-s':'rgba(251,113,133,.18)',
-    '--text-primary':'#fff0f3','--text-secondary':'rgba(255,240,243,.85)','--text-muted':'rgba(255,240,243,.62)','--text-dim':'rgba(255,240,243,.42)',
+    '--text-primary':'#fff0f3','--text-secondary':'rgba(255,240,243,.6)','--text-muted':'rgba(255,240,243,.3)','--text-dim':'rgba(255,240,243,.15)',
     '--accent':'#fb7185','--accent-dim':'rgba(251,113,133,.22)','--accent-bg':'rgba(251,113,133,.08)',
     '--accent2':'#f472b6','--accent2-dim':'rgba(244,114,182,.2)','--accent2-bg':'rgba(244,114,182,.08)',
     '--input-bg':'rgba(251,113,133,.05)','--nav-bg':'rgba(25,8,18,.97)','--header-bg':'rgba(25,8,18,.92)','--particle-color':'#fb7185',
@@ -986,7 +976,7 @@ const THEMES = {
     name:'Clean White', mode:'light', preview:'#6366f1',
     '--bg-base':'#f8fafc','--bg-panel':'rgba(255,255,255,.85)','--bg-panel-s':'rgba(255,255,255,.95)',
     '--bg-card':'rgba(0,0,0,.03)','--border':'rgba(99,102,241,.15)','--border-s':'rgba(99,102,241,.25)',
-    '--text-primary':'#0f172a','--text-secondary':'rgba(15,23,42,.78)','--text-muted':'rgba(15,23,42,.58)','--text-dim':'rgba(15,23,42,.2)',
+    '--text-primary':'#0f172a','--text-secondary':'rgba(15,23,42,.6)','--text-muted':'rgba(15,23,42,.4)','--text-dim':'rgba(15,23,42,.2)',
     '--accent':'#6366f1','--accent-dim':'rgba(99,102,241,.25)','--accent-bg':'rgba(99,102,241,.1)',
     '--accent2':'#8b5cf6','--accent2-dim':'rgba(139,92,246,.2)','--accent2-bg':'rgba(139,92,246,.08)',
     '--input-bg':'rgba(99,102,241,.06)','--nav-bg':'rgba(255,255,255,.97)','--header-bg':'rgba(255,255,255,.95)','--particle-color':'#6366f1',
@@ -995,7 +985,7 @@ const THEMES = {
     name:'Sky Blue', mode:'light', preview:'#0ea5e9',
     '--bg-base':'#f0f9ff','--bg-panel':'rgba(255,255,255,.85)','--bg-panel-s':'rgba(255,255,255,.95)',
     '--bg-card':'rgba(0,0,0,.03)','--border':'rgba(14,165,233,.15)','--border-s':'rgba(14,165,233,.25)',
-    '--text-primary':'#0c1a2e','--text-secondary':'rgba(12,26,46,.78)','--text-muted':'rgba(12,26,46,.58)','--text-dim':'rgba(12,26,46,.2)',
+    '--text-primary':'#0c1a2e','--text-secondary':'rgba(12,26,46,.6)','--text-muted':'rgba(12,26,46,.4)','--text-dim':'rgba(12,26,46,.2)',
     '--accent':'#0ea5e9','--accent-dim':'rgba(14,165,233,.25)','--accent-bg':'rgba(14,165,233,.1)',
     '--accent2':'#6366f1','--accent2-dim':'rgba(99,102,241,.2)','--accent2-bg':'rgba(99,102,241,.08)',
     '--input-bg':'rgba(14,165,233,.06)','--nav-bg':'rgba(255,255,255,.97)','--header-bg':'rgba(255,255,255,.95)','--particle-color':'#0ea5e9',
@@ -1004,7 +994,7 @@ const THEMES = {
     name:'Mint Fresh', mode:'light', preview:'#10b981',
     '--bg-base':'#f0fdf4','--bg-panel':'rgba(255,255,255,.85)','--bg-panel-s':'rgba(255,255,255,.95)',
     '--bg-card':'rgba(0,0,0,.03)','--border':'rgba(16,185,129,.15)','--border-s':'rgba(16,185,129,.25)',
-    '--text-primary':'#052e16','--text-secondary':'rgba(5,46,22,.78)','--text-muted':'rgba(5,46,22,.58)','--text-dim':'rgba(5,46,22,.2)',
+    '--text-primary':'#052e16','--text-secondary':'rgba(5,46,22,.6)','--text-muted':'rgba(5,46,22,.4)','--text-dim':'rgba(5,46,22,.2)',
     '--accent':'#10b981','--accent-dim':'rgba(16,185,129,.25)','--accent-bg':'rgba(16,185,129,.1)',
     '--accent2':'#0d9488','--accent2-dim':'rgba(13,148,136,.2)','--accent2-bg':'rgba(13,148,136,.08)',
     '--input-bg':'rgba(16,185,129,.06)','--nav-bg':'rgba(255,255,255,.97)','--header-bg':'rgba(255,255,255,.95)','--particle-color':'#10b981',
@@ -1013,7 +1003,7 @@ const THEMES = {
     name:'Blossom', mode:'light', preview:'#f43f5e',
     '--bg-base':'#fff1f2','--bg-panel':'rgba(255,255,255,.85)','--bg-panel-s':'rgba(255,255,255,.95)',
     '--bg-card':'rgba(0,0,0,.03)','--border':'rgba(244,63,94,.15)','--border-s':'rgba(244,63,94,.25)',
-    '--text-primary':'#1a0509','--text-secondary':'rgba(26,5,9,.78)','--text-muted':'rgba(26,5,9,.58)','--text-dim':'rgba(26,5,9,.2)',
+    '--text-primary':'#1a0509','--text-secondary':'rgba(26,5,9,.6)','--text-muted':'rgba(26,5,9,.4)','--text-dim':'rgba(26,5,9,.2)',
     '--accent':'#f43f5e','--accent-dim':'rgba(244,63,94,.25)','--accent-bg':'rgba(244,63,94,.1)',
     '--accent2':'#e879f9','--accent2-dim':'rgba(232,121,249,.2)','--accent2-bg':'rgba(232,121,249,.08)',
     '--input-bg':'rgba(244,63,94,.06)','--nav-bg':'rgba(255,255,255,.97)','--header-bg':'rgba(255,255,255,.95)','--particle-color':'#f43f5e',
@@ -1414,68 +1404,6 @@ function useIsDesktop(){
   return d;
 }
 
-
-// ═══════════════════════════════════════════════════════════════
-// ICON SYSTEM — SVG profesional (Lucide-compatible)
-// Penggunaan: h(Icon,{n:'home',s:18,c:'#fff'})  n=name, s=size, c=color
-// ═══════════════════════════════════════════════════════════════
-const ICON_PATHS = {
-  // Navigasi
-  'home':        'M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10',
-  'dashboard':   'M3 3h7v7H3z M14 3h7v7h-7z M14 14h7v7h-7z M3 14h7v7H3z',
-  'profile':     'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-  'history':     'M12 8v4l3 3 M3.05 11a9 9 0 1 0 .5-3.5',
-  'leave':       'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8',
-  'card':        'M2 7a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7z M16 11a1 1 0 1 0 0-2 1 1 0 0 0 0 2z M6 11h4',
-  'more':        'M5 12h.01 M12 12h.01 M19 12h.01',
-  // Admin
-  'students':    'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
-  'attendance':  'M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
-  'qrscan':      'M3 7V5a2 2 0 0 1 2-2h2 M17 3h2a2 2 0 0 1 2 2v2 M21 17v2a2 2 0 0 1-2 2h-2 M7 21H5a2 2 0 0 1-2-2v-2 M8 7h.01 M8 12h.01 M12 8h.01 M16 12h.01 M16 7h.01 M12 16h.01 M8 16h.01 M16 16h.01',
-  'cbt':         'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2 M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2 M9 14l2 2 4-4',
-  'wa':          'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-  'teachers':    'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75',
-  'rekap':       'M18 20V10 M12 20V4 M6 20v-6',
-  'holidays':    'M8 2v4 M16 2v4 M3 10h18 M3 6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6z M8 14h.01 M12 14h.01 M16 14h.01',
-  'schedule':    'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 6v6l4 2',
-  'announcements':'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0',
-  'devices':     'M12 18h.01 M8 21h8 M12 21v-3 M5 3h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z',
-  'location':    'M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z M12 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
-  'multiadmin':  'M12 2a5 5 0 1 0 0 10A5 5 0 0 0 12 2z M12 14c-5.33 0-8 2.67-8 4v2h16v-2c0-1.33-2.67-4-8-4z',
-  'backup':      'M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4 M7 10l5 5 5-5 M12 15V3',
-  'password':    'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4',
-  'activity':    'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8',
-  'settings':    'M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z',
-  // Guru/Wali
-  'absen':       'M9 11l3 3L22 4 M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11',
-  // Siswa
-  'ujian':       'M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2 M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2 M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2 M9 14l2 2 4-4',
-  'izin':        'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M12 18v-6 M9 15h6',
-  'logout':      'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4 M16 17l5-5-5-5 M21 12H9',
-  'theme':       'M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20z M12 2a14.5 14.5 0 0 1 0 20A14.5 14.5 0 0 1 12 2',
-  'bell':        'M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0',
-  'camera':      'M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z M12 17a4 4 0 1 0 0-8 4 4 0 0 0 0 8z',
-  'lock':        'M19 11H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2z M17 11V7a5 5 0 0 0-10 0v4',
-  'check':       'M20 6L9 17l-5-5',
-  'x':           'M18 6L6 18 M6 6l12 12',
-  'chevron-right':'M9 18l6-6-6-6',
-  'info':        'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 8h.01 M11 12h1v4h1',
-};
-
-// Render SVG icon — currentColor mengikuti warna teks konteks
-function Icon({n,s=16,c='currentColor',sw=1.75,style:st}){
-  const d=ICON_PATHS[n];
-  if(!d) return null;
-  const paths=d.split(' M ').map((p,i)=>(i===0?p:'M '+p));
-  return h('svg',{
-    xmlns:'http://www.w3.org/2000/svg',
-    width:s,height:s,viewBox:'0 0 24 24',
-    fill:'none',stroke:c,strokeWidth:sw,
-    strokeLinecap:'round',strokeLinejoin:'round',
-    style:Object.assign({display:'inline-block',verticalAlign:'middle',flexShrink:0},st||{})
-  },...paths.map((p,i)=>h('path',{key:i,d:p})));
-}
-
 // ─── SIDEBAR NAV (PC only) ────────────────────────
 function SidebarNav({items,active,onSelect,title,subtitle,accentColor,onLogout,onTheme,isDemo}){
   const MONO='JetBrains Mono,monospace';
@@ -1484,7 +1412,7 @@ function SidebarNav({items,active,onSelect,title,subtitle,accentColor,onLogout,o
   const SbItem=({item,sub})=>{
     const iact=active===item.id;
     return h('button',{className:'sb-item'+(iact?' act':'')+(sub?' sub':''),onClick:()=>onSelect(item.id)},
-      h(Icon,{n:item.icon,s:sub?14:18,c:'currentColor'}),
+      h('span',{style:{fontSize:sub?'13px':'17px',lineHeight:1,minWidth:sub?'16px':'20px',textAlign:'center'}},item.icon),
       h('span',{style:{flex:1}},item.label),
       item.badge>0&&h('span',{style:{background:'#f87171',color:'#fff',fontSize:'8px',borderRadius:'999px',minWidth:'15px',height:'15px',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 3px'}},item.badge)
     );
@@ -1493,11 +1421,11 @@ function SidebarNav({items,active,onSelect,title,subtitle,accentColor,onLogout,o
   return h('aside',{className:'app-sidebar'},
     h('div',{className:'sb-brand'},
       isDemo&&h('div',{style:{padding:'5px 8px',borderRadius:'8px',background:'rgba(250,204,21,.1)',border:'1px solid rgba(250,204,21,.25)',marginBottom:'10px',display:'flex',alignItems:'center',gap:'6px'}},
-        h(Icon,{n:'info',s:13,c:'#facc15'}),h('span',{style:{color:'#facc15',fontSize:'9px',fontFamily:MONO,fontWeight:'bold',marginLeft:'4px'}},'MODE DEMO')
+        h('span',{style:{fontSize:'13px'}},'🎮'),h('span',{style:{color:'#facc15',fontSize:'9px',fontFamily:MONO,fontWeight:'bold'}},'MODE DEMO')
       ),
       h('div',{style:{display:'flex',alignItems:'center',gap:'10px'}},
-        h('div',{style:{width:'38px',height:'38px',borderRadius:'10px',background:ic+'18',border:'1px solid '+ic+'35',display:'flex',alignItems:'center',justifyContent:'center'}},
-          h(Icon,{n:subtitle&&subtitle.includes('ADMIN')?'multiadmin':subtitle&&subtitle.includes('WALI')?'teachers':subtitle&&subtitle.includes('GURU')?'cbt':'students',s:22,c:ic,sw:1.8})
+        h('div',{style:{width:'38px',height:'38px',borderRadius:'10px',background:ic+'18',border:'1px solid '+ic+'35',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'20px'}},
+          subtitle&&subtitle.includes('ADMIN')?'🛡️':subtitle&&subtitle.includes('WALI')?'👨\u200d🏫':subtitle&&subtitle.includes('GURU')?'📚':'🎓'
         ),
         h('div',null,
           h('p',{style:{fontFamily:'Orbitron,monospace',fontSize:'12px',fontWeight:'bold',color:ic,letterSpacing:'.07em',whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis',maxWidth:'145px'}},'ABSENSI',h('span',{style:{color:'#a855f7'}},'KU')),
@@ -1513,8 +1441,8 @@ function SidebarNav({items,active,onSelect,title,subtitle,accentColor,onLogout,o
       )
     ),
     h('div',{className:'sb-footer'},
-      onTheme&&h('button',{className:'sb-action-btn',onClick:onTheme,style:{border:'1px solid var(--accent-dim)',background:'var(--accent-bg)',color:'var(--accent)',display:'flex',alignItems:'center',gap:'8px'}},h(Icon,{n:'theme',s:14,c:'currentColor'}),'Ganti Tema'),
-      onLogout&&h('button',{className:'sb-action-btn',onClick:onLogout,style:{border:'1px solid rgba(239,68,68,.25)',background:'rgba(239,68,68,.06)',color:'#f87171',display:'flex',alignItems:'center',gap:'8px'}},h(Icon,{n:'logout',s:14,c:'currentColor'}),'Keluar')
+      onTheme&&h('button',{className:'sb-action-btn',onClick:onTheme,style:{border:'1px solid var(--accent-dim)',background:'var(--accent-bg)',color:'var(--accent)'}},h('span',null,'🎨'),'Ganti Tema'),
+      onLogout&&h('button',{className:'sb-action-btn',onClick:onLogout,style:{border:'1px solid rgba(239,68,68,.25)',background:'rgba(239,68,68,.06)',color:'#f87171'}},h('span',null,'🚪'),'Keluar')
     )
   );
 }
@@ -1533,7 +1461,7 @@ function NavBar({items,active,onSelect}) {
         h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--accent-dim)',letterSpacing:'0.2em',marginBottom:'12px',textAlign:'center'}},'MENU LAINNYA'),
         h('div',{style:{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:'8px'}},
           moreItem.children.map(c=>h('button',{key:c.id,onClick:()=>{onSelect(c.id);setShowMore(false);},style:{display:'flex',flexDirection:'column',alignItems:'center',gap:'6px',padding:'12px 4px',borderRadius:'14px',border:'1px solid',cursor:'pointer',background:active===c.id?'rgba(0,240,255,.1)':'var(--bg-card)',borderColor:active===c.id?'rgba(0,240,255,.3)':'rgba(255,255,255,.08)'}},
-            h(Icon,{n:c.icon,s:22,c:'currentColor'}),
+            h('span',{style:{fontSize:'22px',lineHeight:1}},c.icon),
             h('span',{style:{fontSize:'9px',fontFamily:MONO,color:active===c.id?'#00f0ff':'var(--text-muted)',textAlign:'center',lineHeight:1.3}},c.label)
           ))
         )
@@ -1541,13 +1469,13 @@ function NavBar({items,active,onSelect}) {
     ),
     h('div',{style:{maxWidth:'512px',margin:'0 auto',padding:'8px 4px',display:'flex',justifyContent:'space-around'}},
       mainItems.map(item=>h('button',{key:item.id,onClick:()=>onSelect(item.id),style:{display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',padding:'4px 8px',borderRadius:'10px',border:'none',cursor:'pointer',position:'relative',background:active===item.id?'rgba(0,240,255,.08)':'transparent',transition:'background .2s'}},
-        h(Icon,{n:item.icon,s:20,c:'currentColor'}),
+        h('span',{style:{fontSize:'18px',lineHeight:1}},item.icon),
         h('span',{style:{fontSize:'9px',fontFamily:MONO,color:active===item.id?'#00f0ff':'var(--text-muted)',letterSpacing:'0.05em'}},item.label),
         active===item.id&&h('div',{style:{position:'absolute',bottom:'-4px',left:'50%',transform:'translateX(-50%)',width:'20px',height:'2px',borderRadius:'999px',background:'#00f0ff'}}),
         item.badge>0&&h('span',{style:{position:'absolute',top:'2px',right:'4px',background:'#f87171',color:'var(--text-primary)',fontSize:'8px',fontFamily:MONO,borderRadius:'999px',minWidth:'14px',height:'14px',display:'flex',alignItems:'center',justifyContent:'center',padding:'0 3px'}},item.badge)
       )),
       moreItem&&h('button',{onClick:e=>{e.stopPropagation();setShowMore(!showMore);},style:{display:'flex',flexDirection:'column',alignItems:'center',gap:'3px',padding:'4px 8px',borderRadius:'10px',border:'none',cursor:'pointer',position:'relative',background:inMore||showMore?'rgba(0,240,255,.08)':'transparent'}},
-        h(Icon,{n:showMore?'x':'more',s:20,c:'currentColor'}),
+        h('span',{style:{fontSize:'18px',lineHeight:1}},showMore?'\u2715':'\u22EF'),
         h('span',{style:{fontSize:'9px',fontFamily:MONO,color:inMore||showMore?'#00f0ff':'var(--text-muted)',letterSpacing:'0.05em'}},'Lainnya'),
         (inMore||showMore)&&h('div',{style:{position:'absolute',bottom:'-4px',left:'50%',transform:'translateX(-50%)',width:'20px',height:'2px',borderRadius:'999px',background:'#00f0ff'}})
       )
@@ -1623,14 +1551,14 @@ function LoginScreen({onLogin}) {
     h(ParticleBg),
     h('div',{className:'afiu',style:{position:'relative',zIndex:10,width:'100%',maxWidth:'448px'}},
       h('div',{style:{textAlign:'center',marginBottom:'32px'}},
-        h('div',{style:Object.assign({},gl,{display:'inline-flex',alignItems:'center',justifyContent:'center',width:'80px',height:'80px',borderRadius:'16px',border:'1px solid rgba(0,240,255,.3)',animation:'pulse-glow 2s ease-in-out infinite',marginBottom:'16px'})},h(Icon,{n:'students',s:40,c:'var(--accent)',sw:1.5})),
+        h('div',{style:Object.assign({},gl,{display:'inline-flex',alignItems:'center',justifyContent:'center',width:'80px',height:'80px',borderRadius:'16px',border:'1px solid rgba(0,240,255,.3)',animation:'pulse-glow 2s ease-in-out infinite',marginBottom:'16px'})},h('span',{style:{fontSize:'40px'}},'\uD83C\uDFEB')),
         h('h1',{style:{fontFamily:ORB,fontSize:'1.5rem',fontWeight:'bold',color:'var(--text-primary)',textShadow:'0 0 10px rgba(0,240,255,.5)',letterSpacing:'0.1em'}},'ABSENSI',h('span',{style:{color:'#a855f7'}},'KU')),
         h('p',{style:{color:'var(--accent-dim)',marginTop:'4px',fontFamily:MONO,fontSize:'10px',letterSpacing:'0.3em',textTransform:'uppercase'}},schoolName)
       ),
       h('div',{style:{display:'flex',gap:'6px',marginBottom:'24px'}},
-        h('button',{onClick:()=>{setTab('student');setError('');},style:tabBtn(tab==='student')},h(Icon,{n:'students',s:13,c:'currentColor',style:{marginRight:'5px'}}),'Siswa'),
-        h('button',{onClick:()=>{setTab('guru');setError('');},style:tabBtn(tab==='guru')},h(Icon,{n:'teachers',s:13,c:'currentColor',style:{marginRight:'5px'}}),'Guru'),
-        h('button',{onClick:()=>{setTab('admin');setError('');},style:tabBtn(tab==='admin')},h(Icon,{n:'multiadmin',s:13,c:'currentColor',style:{marginRight:'5px'}}),'Admin')
+        h('button',{onClick:()=>{setTab('student');setError('');},style:tabBtn(tab==='student')},'🎓 Siswa'),
+        h('button',{onClick:()=>{setTab('guru');setError('');},style:tabBtn(tab==='guru')},'👨‍🏫 Guru'),
+        h('button',{onClick:()=>{setTab('admin');setError('');},style:tabBtn(tab==='admin')},'🛡️ Admin')
       ),
       h('div',{style:Object.assign({},glS,{borderRadius:'16px',padding:'24px',border:'1px solid rgba(0,240,255,.15)'})},
         h('div',{style:{display:'flex',flexDirection:'column',gap:'16px'}},
@@ -1730,7 +1658,7 @@ function AdminDashboard({students,records,settings,leaves}) {
       h('div',{style:{display:'flex',alignItems:'flex-end',gap:'8px',height:'128px'}},
         weekData.map((w,i)=>h('div',{key:i,style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'4px'}},
           h('div',{style:{width:'100%',height:'100px',display:'flex',flexDirection:'column-reverse'}},h('div',{style:{width:'100%',borderRadius:'4px 4px 0 0',background:'linear-gradient(to top,rgba(0,240,255,.8),rgba(0,240,255,.4))',height:(w.present/maxP*100)+'%',minHeight:w.present>0?'4px':'0'}})),
-          h('span',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)'}},w.day),
+          h('span',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--text-muted)'}},w.day),
           h('span',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--accent)'}},w.present)
         ))
       )
@@ -2293,7 +2221,7 @@ function StudentHistory({student,records,settings,onBack}) {
         r.clockIn&&h('span',{style:{fontSize:'9px',fontFamily:MONO,padding:'4px 8px',borderRadius:'999px',border:'1px solid',color:isLate(r.clockIn,settings.schoolStart)?'#fb923c':'#00ff88',background:isLate(r.clockIn,settings.schoolStart)?'rgba(251,146,60,.1)':'rgba(0,255,136,.1)',borderColor:isLate(r.clockIn,settings.schoolStart)?'rgba(251,146,60,.2)':'rgba(0,255,136,.2)'}},isLate(r.clockIn,settings.schoolStart)?'Terlambat':'Tepat Waktu')
       ),
       h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}},
-        h('div',{style:Object.assign({},gl,{borderRadius:'8px',padding:'12px'})},h('p',{style:{color:'var(--accent-dim)',fontSize:'9px',fontFamily:MONO,letterSpacing:'0.1em',marginBottom:'4px'}},'MASUK'),h('p',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:'var(--accent)'}},r.clockIn||'--:--'),r.clockInPhoto&&h('img',{src:r.clockInPhoto,style:{width:'100%',height:'48px',objectFit:'cover',borderRadius:'4px',marginTop:'8px',opacity:.7}}),r.clockInLocation&&h('a',{href:'https://www.google.com/maps?q='+r.clockInLocation.lat+','+r.clockInLocation.lng,target:'_blank',rel:'noopener noreferrer',style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)',display:'block',marginTop:'4px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textDecoration:'none'}},'\uD83D\uDCCD '+(r.clockInLocation.address||fmtCoords(r.clockInLocation)))),
+        h('div',{style:Object.assign({},gl,{borderRadius:'8px',padding:'12px'})},h('p',{style:{color:'var(--accent-dim)',fontSize:'9px',fontFamily:MONO,letterSpacing:'0.1em',marginBottom:'4px'}},'MASUK'),h('p',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:'var(--accent)'}},r.clockIn||'--:--'),r.clockInPhoto&&h('img',{src:r.clockInPhoto,style:{width:'100%',height:'48px',objectFit:'cover',borderRadius:'4px',marginTop:'8px',opacity:.7}}),r.clockInLocation&&h('a',{href:'https://www.google.com/maps?q='+r.clockInLocation.lat+','+r.clockInLocation.lng,target:'_blank',rel:'noopener noreferrer',style:{fontSize:'8px',fontFamily:MONO,color:'var(--text-muted)',display:'block',marginTop:'4px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textDecoration:'none'}},'\uD83D\uDCCD '+(r.clockInLocation.address||fmtCoords(r.clockInLocation)))),
         h('div',{style:Object.assign({},gl,{borderRadius:'8px',padding:'12px'})},h('p',{style:{color:'rgba(168,85,247,.4)',fontSize:'9px',fontFamily:MONO,letterSpacing:'0.1em',marginBottom:'4px'}},'PULANG'),h('p',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:'#a855f7'}},r.clockOut||'--:--'),r.clockOutStatus&&h('span',{style:{fontSize:'9px',fontFamily:MONO,marginTop:'4px',display:'block',color:r.clockOutStatus==='lembur'?'#00ff88':r.clockOutStatus==='cepat'?'#f87171':'#a855f7'}},r.clockOutStatus==='lembur'?'Lembur':r.clockOutStatus==='cepat'?'Cepat Pulang':'Tepat Waktu'),r.clockOutPhoto&&h('img',{src:r.clockOutPhoto,style:{width:'100%',height:'48px',objectFit:'cover',borderRadius:'4px',marginTop:'8px',opacity:.7}}))
       )
     ))
@@ -3207,9 +3135,9 @@ function StudentKartu({student, settings,onBack}) {
       // QR + kode
       h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
         h('div',null,
-          h('p',{style:{fontFamily:'JetBrains Mono,monospace',fontSize:'9px',color:'var(--text-muted)',letterSpacing:'0.2em',marginBottom:'6px'}},'KODE SISWA'),
+          h('p',{style:{fontFamily:'JetBrains Mono,monospace',fontSize:'8px',color:'var(--text-muted)',letterSpacing:'0.2em',marginBottom:'6px'}},'KODE SISWA'),
           h('p',{style:{fontFamily:'Orbitron,monospace',fontSize:'18px',fontWeight:'bold',color:'var(--accent)',letterSpacing:'0.2em'}},student.studentCode),
-          h('p',{style:{fontFamily:'JetBrains Mono,monospace',fontSize:'9px',color:'var(--text-muted)',marginTop:'8px'}},'AbsensiKu Digital Card')
+          h('p',{style:{fontFamily:'JetBrains Mono,monospace',fontSize:'8px',color:'var(--text-dim)',marginTop:'8px'}},'AbsensiKu Digital Card')
         ),
         h('div',{style:{background:'#fff',padding:'6px',borderRadius:'10px',border:'2px solid rgba(0,240,255,.4)'}},
           h('div',{ref,style:{width:'80px',height:'80px'}})
@@ -4129,7 +4057,7 @@ function CbtResultAdmin({exams,students,onReload}) {
         ].map((s,i)=>h('div',{key:i,style:{padding:'12px',borderRadius:'12px',background:'var(--bg-card)',border:'1px solid var(--border)',textAlign:'center'}},
           h('p',{style:{fontSize:'18px',marginBottom:'4px'}},s.icon),
           h('p',{style:{fontFamily:ORB,fontSize:'16px',fontWeight:'bold',color:s.color}},s.val),
-          h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)',marginTop:'2px'}},s.label)
+          h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'var(--text-dim)',marginTop:'2px'}},s.label)
         ))
       ),
 
@@ -4367,30 +4295,21 @@ function CbtExamCard({exam,student,isDemo,onStart}) {
   const [checking,setChecking]=useState(true);
   useEffect(()=>{
     if(isDemo){setChecking(false);return;}
+    // Cek sesi + preload soal ke cache bersamaan (background)
     Promise.all([
       DB.getCbtSessionByStudent(exam.id,student.id),
+      // Preload soal ke cache diam-diam saat siswa di halaman daftar
       (async()=>{
         const cacheKey='cbt_q_'+exam.id;
         if(!sessionStorage.getItem(cacheKey)){
           try{
             const qs=await DB.getCbtQuestions(exam.id);
             sessionStorage.setItem(cacheKey,JSON.stringify(qs));
+            console.log('Preload soal selesai:',exam.title);
           }catch(e){}
         }
       })()
-    ]).then(async([s])=>{
-      // ── Auto-detect force-exit via last_seen ─────────────────
-      // Jika status ongoing tapi last_seen > 60 detik lalu
-      // → siswa keluar paksa tanpa pagehide terpanggil
-      if(s&&s.status==='ongoing'&&s.last_seen){
-        const staleSec=(Date.now()-new Date(s.last_seen).getTime())/1000;
-        if(staleSec>60){
-          const updated={...s,status:'force_exited'};
-          try{ await DB.saveCbtSession(updated); s=updated; }catch(e){}
-        }
-      }
-      setSession(s);setChecking(false);
-    }).catch(()=>setChecking(false));
+    ]).then(([s])=>{setSession(s);setChecking(false);}).catch(()=>setChecking(false));
   },[]);
 
   const status=session?session.status:null;
@@ -4414,7 +4333,16 @@ function CbtExamCard({exam,student,isDemo,onStart}) {
           h('p',{style:{fontFamily:ORB,fontSize:'9px',color:'#f87171',letterSpacing:'.1em'}},'DISKUALIFIKASI'),
           h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'rgba(248,113,113,.6)',marginTop:'2px'}},'Hubungi guru/admin')
         ):
-      status==='force_exited'?
+      (()=>{
+        if(!session||status==='submitted'||status==='disqualified') return false;
+        if(session.force_exited) return true;
+        // Heartbeat check: last_seen > 45 detik lalu = siswa keluar paksa
+        if(session.last_seen){
+          const diff=(Date.now()-new Date(session.last_seen).getTime())/1000;
+          if(diff>45) return true;
+        }
+        return false;
+      })()?
         h('div',{style:{textAlign:'center'}},
           h('p',{style:{fontSize:'22px',marginBottom:'2px'}},'⛔'),
           h('p',{style:{fontFamily:ORB,fontSize:'9px',color:'#fb923c',letterSpacing:'.1em'}},'KELUAR PAKSA'),
@@ -4831,30 +4759,24 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     };
   },[submitted,loading,isDemo,tokenPassed,addViolation]);
 
-  // ── Force-exit detection: status='force_exited' saat keluar paksa ──
-  // Menggunakan status field yang sudah ada di DB — paling reliable.
-  // Heartbeat tiap 20 detik: update last_seen sebagai fallback.
+  // ── Heartbeat: update last_seen tiap 15 detik ────────────────────
+  // Metode ini lebih andal dari pagehide/beforeunload di PWA mobile.
+  // Jika last_seen > 45 detik lalu, CbtExamCard anggap sesi ditinggalkan.
   useEffect(()=>{
     if(isDemo||submitted||loading||!tokenPassed) return;
-    // Heartbeat: update last_seen tiap 20 detik
     const beat=()=>{
       if(sessionRef.current&&!sessionRef.current._submitted){
         const ts=new Date().toISOString();
         sessionRef.current={...sessionRef.current,last_seen:ts};
-        // Update minimal field saja
-        DB.saveCbtSession({...sessionRef.current}).catch(()=>{});
+        DB.saveCbtSession({...sessionRef.current,last_seen:ts}).catch(()=>{});
       }
     };
-    beat();
-    const iv=setInterval(beat,20000);
-    // Saat keluar: set status='force_exited' di DB
+    beat(); // langsung saat mulai
+    const iv=setInterval(beat,15000);
+    // pagehide sebagai backup (tidak andal di semua PWA)
     const markExited=()=>{
       if(sessionRef.current&&!sessionRef.current._submitted){
-        // Gunakan synchronous fallback agar sempat terkirim
-        const ses={...sessionRef.current,status:'force_exited',exited_at:new Date().toISOString()};
-        sessionRef.current=ses;
-        // fetch synchronous tidak ada, tapi pagehide punya waktu singkat
-        DB.saveCbtSession(ses).catch(()=>{});
+        DB.saveCbtSession({...sessionRef.current,force_exited:true,exited_at:new Date().toISOString()}).catch(()=>{});
       }
     };
     window.addEventListener('pagehide',markExited);
@@ -5136,10 +5058,10 @@ function WaliCBT({teacher, students, isDemo,onBack}) {
                       h('button',{onClick:async e=>{e.stopPropagation();if(confirm('Reset akses ujian '+s.student_name+'?')){await DB.saveCbtSession({...s,status:'ongoing',violations:[],force_exited:false});const s2=await DB.getCbtSessions(selExam);setSessions(s2.filter(ss=>ss.kelas===teacher.kelas));}},
                         style:{marginTop:'4px',padding:'3px 8px',borderRadius:'6px',fontSize:'8px',fontFamily:MONO,color:'#facc15',background:'rgba(250,204,21,.1)',border:'1px solid rgba(250,204,21,.3)',cursor:'pointer'}},'🔄 Reset')
                     )
-                  :s.status==='force_exited'
+                  :s.force_exited&&s.status!=='submitted'
                   ?h('div',null,
                       h('p',{style:{fontFamily:ORB,fontSize:'11px',color:'#fb923c'}},'⛔ K. PAKSA'),
-                      h('button',{onClick:async e=>{e.stopPropagation();if(confirm('Izinkan '+s.student_name+' lanjut ujian?')){await DB.saveCbtSession({...s,status:'ongoing'});const s2=await DB.getCbtSessions(selExam);setSessions(s2.filter(ss=>ss.kelas===teacher.kelas));}},
+                      h('button',{onClick:async e=>{e.stopPropagation();if(confirm('Izinkan '+s.student_name+' lanjut ujian?')){await DB.saveCbtSession({...s,force_exited:false,exited_at:null,last_seen:new Date().toISOString()});const s2=await DB.getCbtSessions(selExam);setSessions(s2.filter(ss=>ss.kelas===teacher.kelas));}},
                         style:{marginTop:'4px',padding:'3px 8px',borderRadius:'6px',fontSize:'8px',fontFamily:MONO,color:'#facc15',background:'rgba(250,204,21,.1)',border:'1px solid rgba(250,204,21,.3)',cursor:'pointer'}},'🔄 Izinkan')
                     )
                   :pct!=null?h('p',{style:{fontFamily:ORB,fontSize:'20px',fontWeight:'bold',color:scoreColor(pct)}},pct):h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-muted)'}},s.status==='ongoing'?'⏳ Sedang':'Essay'),
@@ -5446,26 +5368,26 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
   if(loading||!settings)return h(LoadingScreen,{msg:'Memuat data...'});
   const pending=leaves.filter(l=>l.status==='pending').length;
   const nav=[
-    {id:'dashboard',label:'Home',icon:'dashboard'},
-    {id:'qrscan',label:'Scan QR',icon:'qrscan'},
-    {id:'students',label:'Siswa',icon:'students'},
-    {id:'attendance',label:'Absensi',icon:'attendance'},
-    {id:'leaves',label:'Izin',icon:'leave',badge:pending},
-    {id:'more',label:'Lainnya',icon:'more',children:[
-      {id:'cbt',label:'CBT / Ujian',icon:'cbt'},
-      {id:'wa',label:'Kirim WA',icon:'wa'},
-      {id:'teachers',label:'Guru',icon:'teachers'},
-      {id:'rekap',label:'Rekap Bulanan',icon:'rekap'},
-      {id:'holidays',label:'Hari Libur',icon:'holidays'},
-      {id:'schedule',label:'Jadwal',icon:'schedule'},
-      {id:'announcements',label:'Pengumuman',icon:'announcements'},
-      {id:'devices',label:'Device',icon:'devices'},
-      {id:'location',label:'Lokasi',icon:'location'},
-      {id:'multiadmin',label:'Multi Admin',icon:'multiadmin',superOnly:true},
-      {id:'backup',label:'Backup',icon:'backup',superOnly:true},
-      {id:'password',label:'Reset PW',icon:'password',superOnly:true},
-      {id:'activity',label:'Log Aktivitas',icon:'activity'},
-      {id:'settings',label:'Pengaturan',icon:'settings',superOnly:true},
+    {id:'dashboard',label:'Home',icon:'\uD83D\uDCCA'},
+    {id:'qrscan',label:'Scan QR',icon:'\uD83D\uDCF7'},
+    {id:'students',label:'Siswa',icon:'\uD83C\uDF93'},
+    {id:'attendance',label:'Absensi',icon:'\uD83D\uDCCB'},
+    {id:'leaves',label:'Izin',icon:'\uD83D\uDCDD',badge:pending},
+    {id:'more',label:'Lainnya',icon:'\u22EF',children:[
+      {id:'cbt',label:'CBT / Ujian',icon:'\uD83D\uDCDD'},
+      {id:'wa',label:'Kirim WA',icon:'\uD83D\uDCF1'},
+      {id:'teachers',label:'Guru',icon:'\uD83D\uDC68\u200D\uD83C\uDFEB'},
+      {id:'rekap',label:'Rekap Bulanan',icon:'\uD83D\uDCCA'},
+      {id:'holidays',label:'Hari Libur',icon:'\uD83C\uDF1F'},
+      {id:'schedule',label:'Jadwal',icon:'\u23F0'},
+      {id:'announcements',label:'Pengumuman',icon:'\uD83D\uDCE2'},
+      {id:'devices',label:'Device',icon:'\uD83D\uDCF1'},
+      {id:'location',label:'Lokasi',icon:'\uD83D\uDCCD'},
+      {id:'multiadmin',label:'Multi Admin',icon:'\uD83D\uDEE1',superOnly:true},
+      {id:'backup',label:'Backup',icon:'\uD83D\uDCBE',superOnly:true},
+      {id:'password',label:'Reset PW',icon:'\uD83D\uDD11',superOnly:true},
+      {id:'activity',label:'Log Aktivitas',icon:'\uD83D\uDCDC'},
+      {id:'settings',label:'Pengaturan',icon:'\u2699\uFE0F',superOnly:true},
     ].filter(c=>isSuperAdmin||!c.superOnly)},
   ].filter(n=>isSuperAdmin||!n.superOnly);
   const doLogout=async()=>{if(!isDemo)await DB.addLog('Admin','Logout','');onLogout();};
@@ -5474,7 +5396,7 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
     h(SidebarNav,{items:nav,active:page,onSelect:setPage,subtitle:isSuperAdmin?'SUPERADMIN':'ADMIN',accentColor:isSuperAdmin?'#00f0ff':'#a855f7',onLogout:doLogout,onTheme:()=>setShowTheme(true),isDemo}),
     h('div',{className:'app-content'},
       h('div',{className:'pc-topbar'},
-        h('p',{className:'pc-page-title',style:{display:'flex',alignItems:'center',gap:'10px'}},...(()=>{const found=nav.find(n=>n.id===page)||(nav.find(n=>n.id==='more')?.children?.find(c=>c.id===page));return found?[h(Icon,{n:found.icon,s:20,c:'var(--accent)',sw:2}),found.label]:[''];})()),
+        h('p',{className:'pc-page-title'},nav.find(n=>n.id===page)?nav.find(n=>n.id===page).icon+' '+nav.find(n=>n.id===page).label:(nav.find(n=>n.id==='more')&&nav.find(n=>n.id==='more').children.find(c=>c.id===page))?nav.find(n=>n.id==='more').children.find(c=>c.id===page).icon+' '+nav.find(n=>n.id==='more').children.find(c=>c.id===page).label:''),
         h('div',{style:{display:'flex',alignItems:'center',gap:'10px'}},h(NotifBell,{targetId:'admin'}))
       ),
       h('main',{},
@@ -5510,13 +5432,13 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
     h('header',{className:'mobile-header-wrap',style:Object.assign({},glS,{position:'sticky',top:isDemo?'28px':0,zIndex:30,borderBottom:'1px solid var(--border)'})},
       h('div',{className:'mobile-header-inner',style:{maxWidth:'100%',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
         h('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},
-          h('div',{style:{width:'32px',height:'32px',borderRadius:'8px',background:'var(--accent-bg)',border:'1px solid rgba(0,240,255,.3)',display:'flex',alignItems:'center',justifyContent:'center'}},h(Icon,{n:'multiadmin',s:18,c:'var(--accent)',sw:2})),
+          h('div',{style:{width:'32px',height:'32px',borderRadius:'8px',background:'var(--accent-bg)',border:'1px solid rgba(0,240,255,.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px'}},'\uD83D\uDEE1\uFE0F'),
           h('div',null,h('h1',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:'var(--text-primary)',letterSpacing:'0.1em'}},'ABSENSI',h('span',{style:{color:'#a855f7'}},'KU')),h('p',{style:{fontSize:'8px',fontFamily:MONO,color:isSuperAdmin?'rgba(0,240,255,.6)':'rgba(168,85,247,.6)',letterSpacing:'0.3em'}},isSuperAdmin?'\uD83D\uDEE1\uFE0F SUPERADMIN':'\uD83D\uDC64 ADMIN'+(adminData?' — '+adminData.name:'')))
         ),
         h('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},
           h(NotifBell,{targetId:'admin'}),
-          h('button',{onClick:()=>setShowTheme(true),style:{color:'var(--accent)',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',borderRadius:'8px',padding:'6px 8px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}},h(Icon,{n:'theme',s:16,c:'currentColor'})),
-          h('button',{onClick:async()=>{await DB.addLog('Admin','Logout','');onLogout();},style:{color:'var(--text-muted)',background:'none',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:MONO,display:'flex',alignItems:'center',gap:'5px'}},h(Icon,{n:'logout',s:14,c:'currentColor'}),'Keluar')
+          h('button',{onClick:()=>setShowTheme(true),style:{color:'var(--accent)',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',borderRadius:'8px',padding:'6px 10px',cursor:'pointer',fontSize:'14px'}},'\uD83C\uDFA8'),
+          h('button',{onClick:async()=>{await DB.addLog('Admin','Logout','');onLogout();},style:{color:'var(--text-muted)',background:'none',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:MONO}},'Keluar')
         )
       )
     ),
@@ -5628,7 +5550,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
 
   if(activeExam) return h(CbtExamRunner,{exam:activeExam,student,isDemo,onFinish:()=>{setActiveExam(null);setPage('cbt');reload();}});
   if(loading||!settings)return h(LoadingScreen,{msg:'Memuat data...'});
-  const nav=[{id:'home',label:'Beranda',icon:'home'},{id:'cbt',label:'Ujian',icon:'ujian'},{id:'history',label:'Riwayat',icon:'history'},{id:'kartu',label:'Kartu',icon:'card'},{id:'leave',label:'Izin',icon:'izin'},{id:'profile',label:'Profil',icon:'profile'}];
+  const nav=[{id:'home',label:'Beranda',icon:'\uD83C\uDFE0'},{id:'cbt',label:'Ujian',icon:'\uD83D\uDCDD'},{id:'history',label:'Riwayat',icon:'\uD83D\uDCDC'},{id:'kartu',label:'Kartu',icon:'\uD83C\uDD94'},{id:'leave',label:'Izin',icon:'\uD83D\uDCDD'},{id:'profile',label:'Profil',icon:'\uD83D\uDC64'}];
   if(isDesktop){
     const stu=student;
     const doLogout=()=>{onLogout();};
@@ -5667,9 +5589,9 @@ function StudentPanel({student,onLogout,isDemo=false}) {
           h('div',null,h('h1',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:'var(--text-primary)',letterSpacing:'0.1em'}},'ABSENSI',h('span',{style:{color:'#a855f7'}},'KU')),h('p',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--accent-dim)',letterSpacing:'0.3em'}},student.studentCode+' - '+student.kelas))
         ),
         h('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},
-          h('button',{onClick:()=>setShowTheme(true),style:{color:'var(--accent)',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',borderRadius:'8px',padding:'6px 8px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}},h(Icon,{n:'theme',s:16,c:'currentColor'})),
+          h('button',{onClick:()=>setShowTheme(true),style:{color:'var(--accent)',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',borderRadius:'8px',padding:'6px 10px',cursor:'pointer',fontSize:'14px'}},'\uD83C\uDFA8'),
           h(NotifBell,{targetId:student.id}),
-          h('button',{onClick:async()=>{await DB.addLog(student.name,'Logout','');onLogout();},style:{color:'var(--text-muted)',background:'none',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:MONO,display:'flex',alignItems:'center',gap:'5px'}},h(Icon,{n:'logout',s:14,c:'currentColor'}),'Keluar')
+          h('button',{onClick:async()=>{await DB.addLog(student.name,'Logout','');onLogout();},style:{color:'var(--text-muted)',background:'none',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:MONO}},'Keluar')
         )
       )
     ),
@@ -5854,10 +5776,10 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
   useEffect(()=>{const iv=setInterval(reload,30000);return()=>clearInterval(iv);},[reload]);
 
   const nav = [
-    {id:'rekap', label:'Rekap', icon:'rekap'},
-    {id:'izin', label:'Izin', icon:'izin', badge: leaves.filter(l=>l.status==='pending').length},
-    {id:'cbt', label:'CBT', icon:'cbt'},
-    {id:'wa', label:'Kirim WA', icon:'wa'},
+    {id:'rekap', label:'Rekap', icon:'📊'},
+    {id:'izin', label:'Izin', icon:'📝', badge: leaves.filter(l=>l.status==='pending').length},
+    {id:'cbt', label:'CBT', icon:'📝'},
+    {id:'wa', label:'Kirim WA', icon:'📱'},
   ];
 
   const today = todayStr();
@@ -5892,15 +5814,15 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
     h('header', {style:{position:'sticky',top:0,zIndex:20,background:'var(--header-bg)',backdropFilter:'blur(20px)',borderBottom:'1px solid var(--border)'}},
       h('div', {className:'mobile-header-inner',style:{maxWidth:'100%',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
         h('div', {style:{display:'flex',alignItems:'center',gap:'10px'}},
-          h('div',{style:{width:'36px',height:'36px',borderRadius:'10px',background:'rgba(250,204,21,.15)',border:'1px solid rgba(250,204,21,.3)',display:'flex',alignItems:'center',justifyContent:'center'}},h(Icon,{n:'teachers',s:20,c:'#facc15',sw:2})),
+          h('div', {style:{width:'36px',height:'36px',borderRadius:'10px',background:'rgba(250,204,21,.15)',border:'1px solid rgba(250,204,21,.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px'}}, '👨‍🏫'),
           h('div', null,
             h('p', {style:{fontFamily:ORB,fontSize:'13px',fontWeight:'bold',color:'#facc15',letterSpacing:'0.08em'}}, teacher.name),
             h('p', {style:{fontSize:'9px',fontFamily:MONO,color:'rgba(250,204,21,.5)',letterSpacing:'0.2em'}}, 'WALI KELAS ' + teacher.kelas)
           )
         ),
         h('div', {style:{display:'flex',gap:'8px',alignItems:'center'}},
-          h('button',{onClick:()=>setShowTheme(true),style:{color:'var(--accent)',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',borderRadius:'8px',padding:'6px 8px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}},h(Icon,{n:'theme',s:16,c:'currentColor'})),
-          h('button',{onClick:async()=>{await DB.addLog(teacher.name,'Logout','wali');onLogout();},style:{color:'var(--text-muted)',background:'none',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:MONO,display:'flex',alignItems:'center',gap:'5px'}},h(Icon,{n:'logout',s:14,c:'currentColor'}),'Keluar')
+          h('button', {onClick:()=>setShowTheme(true), style:{color:'var(--accent)',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',borderRadius:'8px',padding:'6px 10px',cursor:'pointer',fontSize:'14px'}}, '🎨'),
+          h('button', {onClick:async()=>{await DB.addLog(teacher.name,'Logout','wali');onLogout();}, style:{color:'var(--text-muted)',background:'none',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:MONO}}, 'Keluar')
         )
       )
     ),
@@ -6055,9 +5977,9 @@ function GuruMapelPanel({teacher, onLogout, isDemo=false}) {
   useEffect(()=>{const iv=setInterval(reload,30000);return()=>clearInterval(iv);},[reload]);
 
   const nav = [
-    {id:'absen',  label:'Absen',   icon:'absen'},
-    {id:'rekap',  label:'Rekap',   icon:'rekap'},
-    {id:'cbt',    label:'CBT',     icon:'cbt'},
+    {id:'absen',  label:'Absen',   icon:'✅'},
+    {id:'rekap',  label:'Rekap',   icon:'📊'},
+    {id:'cbt',    label:'CBT',     icon:'📝'},
   ];
 
   if (loading) return h(LoadingScreen, {msg:'Memuat data guru mapel...'});
@@ -6080,15 +6002,15 @@ function GuruMapelPanel({teacher, onLogout, isDemo=false}) {
     h('header',{style:{position:'sticky',top:0,zIndex:20,background:'var(--header-bg)',backdropFilter:'blur(20px)',borderBottom:'1px solid var(--border)'}},
       h('div',{className:'mobile-header-inner',style:{maxWidth:'100%',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
         h('div',{style:{display:'flex',alignItems:'center',gap:'10px'}},
-          h('div',{style:{width:'36px',height:'36px',borderRadius:'10px',background:'rgba(168,85,247,.15)',border:'1px solid rgba(168,85,247,.3)',display:'flex',alignItems:'center',justifyContent:'center'}},h(Icon,{n:'cbt',s:20,c:'#a855f7',sw:2})),
+          h('div',{style:{width:'36px',height:'36px',borderRadius:'10px',background:'rgba(168,85,247,.15)',border:'1px solid rgba(168,85,247,.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px'}},'📚'),
           h('div',null,
             h('p',{style:{fontFamily:ORB,fontSize:'13px',fontWeight:'bold',color:'#a855f7',letterSpacing:'0.08em'}},teacher.name),
             h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'rgba(168,85,247,.5)',letterSpacing:'0.2em'}},'GURU ' + teacher.mapel)
           )
         ),
         h('div',{style:{display:'flex',gap:'8px',alignItems:'center'}},
-          h('button',{onClick:()=>setShowTheme(true),style:{color:'var(--accent)',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',borderRadius:'8px',padding:'6px 8px',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center'}},h(Icon,{n:'theme',s:16,c:'currentColor'})),
-          h('button',{onClick:async()=>{await DB.addLog(teacher.name,'Logout','mapel');onLogout();},style:{color:'var(--text-muted)',background:'none',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:MONO,display:'flex',alignItems:'center',gap:'5px'}},h(Icon,{n:'logout',s:14,c:'currentColor'}),'Keluar')
+          h('button',{onClick:()=>setShowTheme(true),style:{color:'var(--accent)',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',borderRadius:'8px',padding:'6px 10px',cursor:'pointer',fontSize:'14px'}},'🎨'),
+          h('button',{onClick:async()=>{await DB.addLog(teacher.name,'Logout','mapel');onLogout();},style:{color:'var(--text-muted)',background:'none',border:'none',cursor:'pointer',fontSize:'12px',fontFamily:MONO}},'Keluar')
         )
       )
     ),
@@ -6241,7 +6163,7 @@ function MapelRekap({teacher, students, subjAtt, kelasList,onBack}) {
               const c=st==='Hadir'?'#00ff88':st==='Izin'?'#facc15':st==='Sakit'?'#60a5fa':'#f87171';
               return h('div',{key:st,style:{textAlign:'center',padding:'6px',borderRadius:'8px',background:c+'12',border:'1px solid '+c+'25'}},
                 h('p',{style:{fontFamily:ORB,fontSize:'16px',fontWeight:'bold',color:c}},n),
-                h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)'}},st)
+                h('p',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--text-muted)'}},st)
               );
             })
           ),
