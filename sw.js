@@ -5,12 +5,13 @@ const CACHE_NAME = 'absensiKu-v6';
 const CBT_CACHE  = 'absensiKu-cbt-v2';
 
 // ── Install — langsung skipWaiting, TIDAK pre-cache HTML
-// (pre-cache HTML di GitHub Pages subfolder sering gagal → SW tidak aktif)
 self.addEventListener('install', e => {
   e.waitUntil(self.skipWaiting());
 });
 
-// ── Activate — hapus semua cache lama, klaim semua client ──────────
+// ── Activate — hapus cache lama, klaim client
+// PENTING: clients.claim() tidak menyebabkan reload halaman —
+// hanya mengambil kontrol tab yang belum dikontrol SW
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -24,7 +25,6 @@ self.addEventListener('activate', e => {
 
 // ── Fetch — strategi cache ─────────────────────────────────────────
 self.addEventListener('fetch', e => {
-  // Abaikan request non-GET
   if (e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
@@ -61,8 +61,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // 3. Semua request lain (termasuk HTML, Supabase API) → Network First
-  // Tidak di-cache agar selalu fresh dari server
+  // 3. Semua request lain → Network First (tidak di-cache)
   e.respondWith(
     fetch(e.request).catch(() => caches.match(e.request))
   );
@@ -71,12 +70,25 @@ self.addEventListener('fetch', e => {
 // ── Message handler ────────────────────────────────────────────────
 self.addEventListener('message', e => {
   if (!e.data) return;
+
+  // Hapus HANYA cache CBT soal — tidak reload, tidak claim ulang
   if (e.data === 'CLEAR_CBT_CACHE') {
-    caches.delete(CBT_CACHE).then(() => {
-      if (e.ports && e.ports[0]) e.ports[0].postMessage('CBT cache cleared');
+    caches.open(CBT_CACHE).then(cache => {
+      return cache.keys().then(keys =>
+        Promise.all(keys.map(k => cache.delete(k)))
+      );
+    }).then(() => {
+      // Broadcast ke semua client agar hapus sessionStorage cbt_q_ juga
+      self.clients.matchAll().then(clients => {
+        clients.forEach(client =>
+          client.postMessage({type:'CBT_CACHE_CLEARED'})
+        );
+      });
     });
+    return;
   }
-  if (e.data.type === 'SKIP_WAITING') {
+
+  if (e.data && e.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
 });
