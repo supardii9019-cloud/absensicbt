@@ -1154,8 +1154,8 @@ function CameraView({action,school,student,onCapture,onClose}) {
   },[action,loc,facing,onCapture,dist,inside,school,student,isIn]);
   const startCD=sec=>{setCountdown(sec);const iv=setInterval(()=>setCountdown(p=>{if(p===null||p<=1){clearInterval(iv);takePhoto();return null;}return p-1;}),1000);};
   const canCapture=ready&&countdown===null&&gpsStatus==='success'&&inside;
-  return h('div',{style:{position:'fixed',inset:0,zIndex:50,background:'#000',display:'flex',flexDirection:'column'}},
-    h('div',{style:Object.assign({},glS,{position:'absolute',top:0,left:0,right:0,zIndex:20,padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'})},
+  return h('div',{style:{position:'fixed',inset:0,zIndex:500,background:'#000',display:'flex',flexDirection:'column'}},
+    h('div',{style:Object.assign({},glS,{position:'absolute',top:0,left:0,right:0,zIndex:510,padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'})},
       h('button',{onClick:()=>{if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());onClose();},style:Object.assign({},gl,{width:'40px',height:'40px',borderRadius:'50%',border:'1px solid var(--border)',display:'flex',alignItems:'center',justifyContent:'center',color:'var(--text-secondary)',cursor:'pointer',fontSize:'16px'})},'\u2715'),
       h('div',{style:{textAlign:'center'}},
         h('span',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',letterSpacing:'0.2em',color:isIn?'#00f0ff':'#ff8800'}},isIn?'ABSEN MASUK':'ABSEN PULANG'),
@@ -4085,12 +4085,15 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   const [tokenInput,setTokenInput]=useState('');
   const [tokenPassed,setTokenPassed]=useState(!exam.token||isDemo);
   const [tokenError,setTokenError]=useState('');
+  // Jika ada token, jangan tampilkan loading sebelum token diisi
+  if(exam.token&&!isDemo&&!tokenPassed&&loading) setLoading(false);
   const videoRef=useRef(null);
   const canvasRef=useRef(null);
   const sessionRef=useRef(null);
 
   // ── Init ──────────────────────────────────────────────────────────
   useEffect(()=>{
+    if(!tokenPassed) return; // Tunggu token diverifikasi dulu
     (async()=>{
       // Spread spike: delay acak 0-2 detik agar 500 siswa tidak hit DB serentak
       if(!isDemo){
@@ -4191,7 +4194,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
         setLoading(false);
       }
     })();
-  },[]);
+  },[tokenPassed]);
 
   // ── Kamera ────────────────────────────────────────────────────────
   useEffect(()=>{
