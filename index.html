@@ -13,7 +13,7 @@
 <!-- PWA Meta Tags -->
 <meta name="application-name" content="AbsensiKu">
 <meta name="description" content="Sistem Absensi Siswa Digital berbasis lokasi dan kamera">
-<meta name="theme-color" content="#0a0a0f">
+<meta name="theme-color" content="#0a0a0f" id="theme-color-meta">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -27,7 +27,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <noscript><link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;scrollbar-width:thin;scrollbar-color:#2a2a45 transparent}
+*{box-sizing:border-box;margin:0;padding:0;scrollbar-width:thin;scrollbar-color:var(--accent-dim) transparent}
 body{background:var(--bg-base);font-family:'Inter',system-ui,-apple-system,sans-serif;overflow-x:hidden;color:var(--text-primary);touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
 input,textarea,select{font-size:16px!important}
@@ -38,10 +38,10 @@ input,textarea,select{font-size:16px!important}
 @keyframes spin-slow{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @keyframes countdown-pulse{0%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.5}100%{transform:scale(2);opacity:0}}
 .afiu{animation:fade-in-up .6s ease-out forwards}
-.di{background:var(--input-bg);border:1px solid var(--accent-dim);color:var(--accent);outline:none;font-family:'Inter',sans-serif;transition:all .3s;width:100%}
-.di:focus{border-color:#00f0ff;box-shadow:0 0 20px rgba(0,240,255,.2)}
-.di::placeholder{color:rgba(0,240,255,.3)}
-input[type=date],select{color-scheme:dark}
+.di{background:var(--input-bg);border:1px solid var(--accent-dim);color:var(--text-primary);outline:none;font-family:'Inter',sans-serif;transition:all .3s;width:100%}
+.di:focus{border-color:var(--accent);box-shadow:0 0 20px var(--accent-bg)}
+.di::placeholder{color:var(--text-dim)}
+input[type=date],select{color-scheme:light dark}
 </style>
 <style id="theme-vars">
 :root {
@@ -78,7 +78,7 @@ input[type=date],select{color-scheme:dark}
     border-right: 1px solid var(--border);
     display: flex !important; flex-direction: column; overflow-y: auto;
   }
-  .app-content { margin-left: var(--sidebar-w); width: calc(100% - var(--sidebar-w)); min-height: 100vh; }
+  .app-content { margin-left: var(--sidebar-w); width: calc(100% - var(--sidebar-w)); min-height: 100vh; background: var(--bg-base); position: relative; z-index: 1; }
   .mobile-nav  { display: none !important; }
   .mobile-header { display: none !important; }
   .app-content main { max-width: 960px !important; margin: 0 auto !important; padding: 28px 36px 48px !important; }
@@ -93,7 +93,7 @@ input[type=date],select{color-scheme:dark}
     text-align: left; transition: all .15s; background: transparent;
     color: var(--text-muted); letter-spacing: 0.03em;
   }
-  .sb-item:hover   { background: rgba(255,255,255,.04); color: var(--text-secondary); }
+  .sb-item:hover   { background: var(--accent-bg); color: var(--text-secondary); }
   .sb-item.act     { background: var(--accent-bg) !important; color: var(--accent) !important; border-color: var(--accent-dim) !important; }
   .sb-item.sub     { padding-left: 26px; font-size: 10px; }
   .sb-section-lbl  { font-family: 'JetBrains Mono',monospace; font-size: 8px; letter-spacing: .3em; color: var(--text-dim); padding: 10px 12px 4px; }
@@ -904,7 +904,7 @@ function applyTheme(themeId) {
   Object.keys(t).forEach(k => { if(k.startsWith('--')) root.style.setProperty(k, t[k]); });
   document.body.style.background = t['--bg-base'];
   document.body.style.color = t['--text-primary'];
-  const meta = document.querySelector('meta[name="theme-color"]');
+  const meta = document.getElementById('theme-color-meta') || document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute('content', t['--bg-base']);
 }
 
@@ -5734,7 +5734,7 @@ function showInstallModal(){
   sub.textContent = 'Install Aplikasi';
 
   var desc = document.createElement('p');
-  desc.style.cssText = 'color:rgba(255,255,255,.5);font-size:13px;line-height:1.6;margin-bottom:28px';
+  desc.style.cssText = 'color:var(--text-muted);font-size:13px;line-height:1.6;margin-bottom:28px';
   desc.textContent = 'Install AbsensiKu ke perangkat Anda. App akan tersedia di layar utama dan dapat di-uninstall seperti app biasa.';
 
   var btnInstall = document.createElement('button');
@@ -5750,7 +5750,7 @@ function showInstallModal(){
   };
 
   var btnSkip = document.createElement('button');
-  btnSkip.style.cssText = 'width:100%;padding:12px;border-radius:14px;background:none;border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.3);font-family:JetBrains Mono,monospace;font-size:11px;cursor:pointer';
+  btnSkip.style.cssText = 'width:100%;padding:12px;border-radius:14px;background:none;border:1px solid var(--border);color:var(--text-muted);font-family:JetBrains Mono,monospace;font-size:11px;cursor:pointer';
   btnSkip.textContent = 'Nanti saja';
   btnSkip.onclick = function(){
     var m = document.getElementById('pwa-modal');
