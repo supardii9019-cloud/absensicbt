@@ -4417,14 +4417,6 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     };
   },[loading,tokenPassed,submitted]);
 
-  // Auto foto tiap 30 detik
-  useEffect(()=>{
-    if(!camStream||submitted) return;
-    // Jitter: tiap siswa auto-foto di waktu sedikit berbeda (hindari spike)
-    const jitter=25000+Math.floor(Math.random()*10000);
-    const iv=setInterval(()=>capturePhoto(false),jitter);
-    return()=>clearInterval(iv);
-  },[camStream,submitted,capturePhoto]);
 
   const capturePhoto=useCallback((manual=false)=>{
     if(!canvasRef.current||!videoRef.current||!camStreamRef.current) return null;
@@ -4441,6 +4433,16 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     });
     return data;
   },[camStream,isDemo]);
+
+  // Auto foto tiap 30 detik
+  useEffect(()=>{
+    if(!camStream||submitted) return;
+    // Jitter: tiap siswa auto-foto di waktu sedikit berbeda (hindari spike)
+    const jitter=25000+Math.floor(Math.random()*10000);
+    const iv=setInterval(()=>capturePhoto(false),jitter);
+    return()=>clearInterval(iv);
+  },[camStream,submitted,capturePhoto]);
+
 
   // ── Timer ─────────────────────────────────────────────────────────
   useEffect(()=>{
