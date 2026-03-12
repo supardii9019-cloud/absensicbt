@@ -395,10 +395,10 @@ const DB = {
     const {data} = await sb.from('school_settings').eq('id','1').get();
     if(!data||!data[0]) return {schoolName:'SMA Negeri 1 Jakarta',schoolStart:'07:00',schoolEnd:'15:00',deviceLock:true,locationName:'SMA Negeri 1',locationLat:-6.2088,locationLng:106.8456,locationRadius:200};
     const r=data[0];
-    return {schoolName:r.school_name,schoolStart:(r.school_start||'07:00').slice(0,5),schoolEnd:(r.school_end||'15:00').slice(0,5),deviceLock:r.device_lock,locationName:r.location_name,locationLat:r.location_lat,locationLng:r.location_lng,locationRadius:r.location_radius,fonnteToken:r.fonnte_token||'',fonnteDevice:r.fonnte_device||'',schoolLogo:r.logo||''};
+    return {schoolName:r.school_name,schoolStart:(r.school_start||'07:00').slice(0,5),schoolEnd:(r.school_end||'15:00').slice(0,5),deviceLock:r.device_lock,locationName:r.location_name,locationLat:r.location_lat,locationLng:r.location_lng,locationRadius:r.location_radius,fonnteToken:r.fonnte_token||'',fonnteDevice:r.fonnte_device||''};
   },
   async saveSettings(s) {
-    await sb.from('school_settings').eq('id','1').update({school_name:s.schoolName,school_start:s.schoolStart,school_end:s.schoolEnd,device_lock:s.deviceLock,location_name:s.locationName,location_lat:s.locationLat,location_lng:s.locationLng,location_radius:s.locationRadius,fonnte_token:s.fonnteToken||'',fonnte_device:s.fonnteDevice||'',logo:s.schoolLogo||null,updated_at:new Date().toISOString()});
+    await sb.from('school_settings').eq('id','1').update({school_name:s.schoolName,school_start:s.schoolStart,school_end:s.schoolEnd,device_lock:s.deviceLock,location_name:s.locationName,location_lat:s.locationLat,location_lng:s.locationLng,location_radius:s.locationRadius,fonnte_token:s.fonnteToken||'',fonnte_device:s.fonnteDevice||'',updated_at:new Date().toISOString()});
   },
   async getStudents() {
     const {data} = await sb.from('students').order('created_at',{ascending:true}).get();
@@ -1623,7 +1623,7 @@ function LoginScreen({onLogin}) {
     h(ParticleBg),
     h('div',{className:'afiu',style:{position:'relative',zIndex:10,width:'100%',maxWidth:'448px'}},
       h('div',{style:{textAlign:'center',marginBottom:'32px'}},
-        h('div',{style:Object.assign({},gl,{display:'inline-flex',alignItems:'center',justifyContent:'center',width:'80px',height:'80px',borderRadius:'16px',border:'1px solid rgba(0,240,255,.3)',animation:'pulse-glow 2s ease-in-out infinite',marginBottom:'16px',overflow:'hidden'}),key:'logo'},settings&&settings.schoolLogo?h('img',{src:settings.schoolLogo,style:{width:'100%',height:'100%',objectFit:'contain'}}):h(Icon,{n:'students',s:40,c:'var(--accent)',sw:1.5})),
+        h('div',{style:Object.assign({},gl,{display:'inline-flex',alignItems:'center',justifyContent:'center',width:'80px',height:'80px',borderRadius:'16px',border:'1px solid rgba(0,240,255,.3)',animation:'pulse-glow 2s ease-in-out infinite',marginBottom:'16px'})},h(Icon,{n:'students',s:40,c:'var(--accent)',sw:1.5})),
         h('h1',{style:{fontFamily:ORB,fontSize:'1.5rem',fontWeight:'bold',color:'var(--text-primary)',textShadow:'0 0 10px rgba(0,240,255,.5)',letterSpacing:'0.1em'}},'ABSENSI',h('span',{style:{color:'#a855f7'}},'KU')),
         h('p',{style:{color:'var(--accent-dim)',marginTop:'4px',fontFamily:MONO,fontSize:'10px',letterSpacing:'0.3em',textTransform:'uppercase'}},schoolName)
       ),
@@ -2171,30 +2171,7 @@ function AdminSettings({settings,onSave,onBack}) {
 
     // Nama Sekolah
     h(Section,{title:'Identitas Sekolah',color:'var(--accent)'},
-      [
-      // Logo upload
-      h('div',{style:{marginBottom:'4px'}},
-        h('label',{style:LBL},'Logo Halaman Muka'),
-        h('div',{style:{display:'flex',alignItems:'center',gap:'14px',marginTop:'6px'}},
-          h('div',{style:{width:'72px',height:'72px',borderRadius:'14px',background:'var(--bg-card)',border:'2px dashed var(--border-s)',display:'flex',alignItems:'center',justifyContent:'center',overflow:'hidden',flexShrink:0}},
-            form.schoolLogo
-              ?h('img',{src:form.schoolLogo,style:{width:'100%',height:'100%',objectFit:'contain'}})
-              :h(Icon,{n:'students',s:28,c:'var(--accent-dim)'})
-          ),
-          h('div',{style:{flex:1,display:'flex',flexDirection:'column',gap:'8px'}},
-            h('label',{style:{display:'inline-flex',alignItems:'center',gap:'8px',padding:'10px 16px',borderRadius:'10px',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',fontSize:'12px',fontFamily:MONO,cursor:'pointer',letterSpacing:'.05em'}},
-              h(Icon,{n:'backup',s:14,c:'currentColor'}),
-              logoLoading?'Memuat...':'Upload Logo',
-              h('input',{type:'file',accept:'image/*',onChange:handleLogoUpload,style:{display:'none'}})
-            ),
-            form.schoolLogo&&h('button',{onClick:()=>setForm(f=>Object.assign({},f,{schoolLogo:''})),style:{display:'inline-flex',alignItems:'center',gap:'6px',padding:'8px 12px',borderRadius:'8px',background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.25)',color:'#f87171',fontSize:'11px',fontFamily:MONO,cursor:'pointer'}},
-              h(Icon,{n:'x',s:12,c:'currentColor'}),' Hapus Logo'
-            )
-          )
-        ),
-        h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)',marginTop:'6px'}},'Format: JPG/PNG/SVG · Maks 500 KB · Tampil di halaman login')
-      ),
-      h('div',null,
+      [h('div',null,
         h('label',{style:LBL},'Nama Sekolah'),
         h('input',{className:'di',type:'text',value:form.schoolName,onChange:e=>setForm(Object.assign({},form,{schoolName:e.target.value})),placeholder:'SMA Negeri 1...',style:iSt})
       )]
@@ -4750,14 +4727,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     if(submitted||loading||!tokenPassed) return;
     const tryFS=()=>{if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});};
     tryFS();
-    const onFsChange=()=>{
-      // Jangan hitung violation jika app sedang ditutup
-      if(!document.fullscreenElement&&!sessionRef.current?._appClosing){
-        addViolation('Keluar dari fullscreen');
-        setShowWarning('⚠️ Keluar fullscreen! Kembali...');
-        setTimeout(()=>{tryFS();setShowWarning(null);},2000);
-      }
-    };
+    const onFsChange=()=>{if(!document.fullscreenElement){addViolation('Keluar dari fullscreen');setShowWarning('⚠️ Keluar fullscreen! Kembali...');setTimeout(()=>{tryFS();setShowWarning(null);},2000);}};
     document.addEventListener('fullscreenchange',onFsChange);
     return()=>{document.removeEventListener('fullscreenchange',onFsChange);if(document.exitFullscreen&&document.fullscreenElement)document.exitFullscreen().catch(()=>{});};
   },[submitted,loading,isDemo,tokenPassed,addViolation]);
@@ -4804,23 +4774,18 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     const noSel=e=>{e.preventDefault();return false;};
     const noDrag=e=>{e.preventDefault();return false;};
 
-    // Flag: app sedang ditutup (pagehide) — jangan hitung sebagai violation
-    let appClosing=false;
-    window.addEventListener('pagehide',()=>{appClosing=true;},{once:true});
-
     // Pindah tab / minimize: violation (debounce 1 detik agar tidak double-trigger)
     let visTimer=null;
     const onVis=()=>{
       if(document.hidden){
         clearTimeout(visTimer);
         visTimer=setTimeout(()=>{
-          if(appClosing||sessionRef.current?._appClosing) return; // app ditutup
           addViolation('Pindah tab / minimize');
           setShowWarning('⚠️ Terdeteksi keluar dari halaman ujian!');
           setTimeout(()=>setShowWarning(null),3500);
-        },1500); // naikkan jadi 1.5 detik — beri waktu pagehide jalan duluan
+        },1000);
       } else {
-        clearTimeout(visTimer);
+        clearTimeout(visTimer); // batalkan jika kembali dalam 1 detik
       }
     };
 
@@ -4882,12 +4847,14 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     };
     beat();
     const iv=setInterval(beat,20000);
-    // Saat keluar paksa: langsung submit ujian dengan jawaban seadanya
+    // Saat keluar: set status='force_exited' di DB
     const markExited=()=>{
-      if(sessionRef.current) sessionRef.current._appClosing=true; // stop all violations
       if(sessionRef.current&&!sessionRef.current._submitted){
-        // Panggil handleSubmit(auto=true) agar skor dihitung & status='submitted'
-        handleSubmit(true,false);
+        // Gunakan synchronous fallback agar sempat terkirim
+        const ses={...sessionRef.current,status:'force_exited',exited_at:new Date().toISOString()};
+        sessionRef.current=ses;
+        // fetch synchronous tidak ada, tapi pagehide punya waktu singkat
+        DB.saveCbtSession(ses).catch(()=>{});
       }
     };
     window.addEventListener('pagehide',markExited);
