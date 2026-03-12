@@ -4417,7 +4417,6 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     };
   },[loading,tokenPassed,submitted]);
 
-
   const capturePhoto=useCallback((manual=false)=>{
     if(!canvasRef.current||!videoRef.current||!camStreamRef.current) return null;
     const cv=canvasRef.current;const vd=videoRef.current;
@@ -4442,7 +4441,6 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     const iv=setInterval(()=>capturePhoto(false),jitter);
     return()=>clearInterval(iv);
   },[camStream,submitted,capturePhoto]);
-
 
   // ── Timer ─────────────────────────────────────────────────────────
   useEffect(()=>{
