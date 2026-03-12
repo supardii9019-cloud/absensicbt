@@ -422,7 +422,9 @@ const DB = {
       shuffle_answers:exam.shuffle_answers!==false, allow_essay:exam.allow_essay||false,
       status:exam.status||'draft',
       max_concurrent:exam.max_concurrent||100,
-      wave_interval:exam.wave_interval||0
+      wave_interval:exam.wave_interval||0,
+      token:exam.token||null,
+      show_score:exam.show_score!==false
     });
   },
   async deleteCbtExam(id) {
@@ -1208,9 +1210,10 @@ function CameraView({action,school,student,onCapture,onClose}) {
   );
 }
 
-function SectionHeader({title,count,color1,color2,right}) {
-  return h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},
+function SectionHeader({title,count,color1,color2,right,onBack}) {
+  return h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'0'}},
     h('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},
+      onBack&&h('button',{onClick:onBack,style:{display:'flex',alignItems:'center',gap:'4px',padding:'5px 10px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer',fontFamily:MONO,fontSize:'10px',marginRight:'4px',flexShrink:0}},'← Kembali'),
       h('div',{style:{width:'4px',height:'20px',borderRadius:'999px',background:'linear-gradient(to bottom,'+(color1||'#00f0ff')+','+(color2||'#a855f7')+')'}}),
       h('h2',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'600',color:'var(--text-secondary)',letterSpacing:'0.1em',textTransform:'uppercase'}},title),
       count!==undefined&&h('span',{style:{color:'var(--accent-dim)',fontSize:'12px',fontFamily:MONO}},'('+count+')')
@@ -1594,7 +1597,7 @@ function AdminActionBar({actions=[]}) {
   );
 }
 
-function AdminStudents({students,onReload,settings}) {
+function AdminStudents({students,onReload,settings,onBack}) {
   const[showForm,setShowForm]=useState(false);const[editId,setEditId]=useState(null);const[search,setSearch]=useState('');const[saving,setSaving]=useState(false);const[fKelasFilter,setFKelasFilter]=useState('');
   const[form,setForm]=useState({name:'',studentCode:'',password:'123456',kelas:'',nis:'',phone:''});
   const filtered=students.filter(s=>(s.name.toLowerCase().includes(search.toLowerCase())||s.studentCode.toLowerCase().includes(search.toLowerCase())||s.kelas.toLowerCase().includes(search.toLowerCase()))&&(!fKelasFilter||s.kelas===fKelasFilter));
@@ -1614,7 +1617,7 @@ function AdminStudents({students,onReload,settings}) {
   const iSt={padding:'10px 12px',borderRadius:'8px',fontSize:'14px'};
   const fields=[{l:'Nama Lengkap',k:'name',p:'Andi Pratama'},{l:'ID Siswa',k:'studentCode',p:'SIS006'},{l:'Password',k:'password',p:'123456'},{l:'Kelas',k:'kelas',p:'XII IPA 1'},{l:'NIS',k:'nis',p:'2024006'},{l:'No. HP',k:'phone',p:'08123'}];
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Kelola Siswa',count:students.length}),
+    h(SectionHeader,{title:'Kelola Siswa',count:students.length,onBack}),
     h(AdminActionBar,{actions:[
       {label:'+ Tambah Siswa',color:'var(--accent)',bg:'rgba(0,240,255,.1)',border:'rgba(0,240,255,.3)',onClick:openAdd},
       {label:'📊 Export Excel',color:'#00ff88',bg:'rgba(0,255,136,.1)',border:'rgba(0,255,136,.3)',children:[
@@ -1658,13 +1661,13 @@ function AdminStudents({students,onReload,settings}) {
   );
 }
 
-function AdminAttendance({records,students,settings}) {
+function AdminAttendance({records,students,settings,onBack}) {
   const[fStu,setFStu]=useState('');const[fDate,setFDate]=useState('');const[fKelas,setFKelas]=useState('');
   const kelasSet=[...new Set(students.map(s=>s.kelas))].sort();
   const sorted=records.filter(r=>{if(fStu&&r.studentId!==fStu)return false;if(fDate&&r.date!==fDate)return false;if(fKelas){const s=students.find(x=>x.id===r.studentId);if(!s||s.kelas!==fKelas)return false;}return true;});
   const sSt={padding:'10px 8px',borderRadius:'12px',fontSize:'12px',background:'var(--input-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',fontFamily:MONO,width:'100%'};
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Data Absensi',count:records.length,color2:'#00ff88'}),
+    h(SectionHeader,{title:'Data Absensi',count:records.length,color2:'#00ff88',onBack}),
     h(AdminActionBar,{actions:[
       {label:'📄 Export PDF',color:'#f87171',bg:'rgba(239,68,68,.1)',border:'rgba(239,68,68,.3)',children:[
         {label:'Harian',onClick:()=>exportPDF(records,students,settings,'daily',fKelas||null)},
@@ -1699,14 +1702,14 @@ function AdminAttendance({records,students,settings}) {
   );
 }
 
-function AdminLeaves({leaves,onReload}) {
+function AdminLeaves({leaves,onReload,onBack}) {
   const[fStatus,setFStatus]=useState('');
   const sorted=leaves.filter(l=>!fStatus||l.status===fStatus);
   const review=async(id,status,note)=>{await DB.updateLeaveStatus(id,status,note);const lv=leaves.find(l=>l.id===id);if(lv){await DB.addNotification(lv.studentId,'Pengajuan '+lv.type+' Anda '+(status==='approved'?'DISETUJUI \u2705':'DITOLAK \u274C')+(note?' - "'+note+'"':''),status==='approved'?'success':'error');await DB.addLog('Admin',status==='approved'?'Approve Izin':'Reject Izin',lv.studentName);}await onReload();};
   const sColor=s=>s==='pending'?'#facc15':s==='approved'?'#00ff88':'#f87171';
   const tLabel=t=>t==='izin'?'Izin':t==='sakit'?'Sakit':'Dispensasi';
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Izin & Dispensasi',color2:'#00f0ff'}),
+    h(SectionHeader,{title:'Izin & Dispensasi',color2:'#00f0ff',onBack}),
     h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}},
       [{v:leaves.filter(l=>l.status==='pending').length,l:'Pending',c:'#facc15'},{v:leaves.filter(l=>l.status==='approved').length,l:'Disetujui',c:'#00ff88'},{v:leaves.filter(l=>l.status==='rejected').length,l:'Ditolak',c:'#f87171'}].map((s,i)=>h('div',{key:i,style:Object.assign({},gl,{borderRadius:'12px',padding:'16px',textAlign:'center'})},h('p',{style:{fontFamily:ORB,fontSize:'1.5rem',fontWeight:'bold',color:s.c}},s.v),h('p',{style:{color:'var(--text-muted)',fontSize:'9px',fontFamily:MONO,marginTop:'4px'}},s.l)))
     ),
@@ -1736,7 +1739,7 @@ function AdminLeaves({leaves,onReload}) {
   );
 }
 
-function AdminAnnouncements({announcements,onReload,students}) {
+function AdminAnnouncements({announcements,onReload,students,onBack}) {
   const[showForm,setShowForm]=useState(false);
   const[saving,setSaving]=useState(false);
   const[form,setForm]=useState({title:'',content:'',priority:'normal'});
@@ -1761,7 +1764,7 @@ function AdminAnnouncements({announcements,onReload,students}) {
 
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
     h(SectionHeader,{title:'Pengumuman',count:announcements.length,color1:'#ff8800',color2:'#ff3366',
-      right:h('button',{onClick:()=>setShowForm(true),style:{padding:'8px 16px',borderRadius:'12px',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',fontSize:'12px',fontFamily:MONO,cursor:'pointer',whiteSpace:'nowrap'}},'+ Buat')
+      right:h('button',{onClick:()=>setShowForm(true),style:{padding:'8px 16px',borderRadius:'12px',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',fontSize:'12px',fontFamily:MONO,cursor:'pointer',whiteSpace:'nowrap',onBack}},'+ Buat')
     }),
 
     announcements.length===0
@@ -1849,14 +1852,14 @@ function AdminAnnouncements({announcements,onReload,students}) {
 }
 
 
-function AdminDevices({students,onReload}) {
+function AdminDevices({students,onReload,onBack}) {
   const[search,setSearch]=useState('');
   const reg=students.filter(s=>s.deviceId);
   const filtered=reg.filter(s=>s.name.toLowerCase().includes(search.toLowerCase())||s.studentCode.toLowerCase().includes(search.toLowerCase())||(s.deviceId||'').toLowerCase().includes(search.toLowerCase()));
   const resetOne=async id=>{if(confirm('Reset perangkat?')){const s=students.find(x=>x.id===id);await DB.resetStudentDevice(id);await DB.addLog('Admin','Reset Device',s&&s.name);await onReload();}};
   const resetAll=async()=>{if(confirm('Reset SEMUA?')){for(const s of reg){await DB.resetStudentDevice(s.id);}await DB.addLog('Admin','Reset All Devices','');await onReload();}};
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Kelola Perangkat',color1:'#a855f7'}),
+    h(SectionHeader,{title:'Kelola Perangkat',color1:'#a855f7',onBack}),
     h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}},
       [{v:students.filter(s=>s.active).length,l:'Total',c:'#00f0ff'},{v:reg.length,l:'Terdaftar',c:'#00ff88'},{v:students.filter(s=>!s.deviceId&&s.active).length,l:'Belum',c:'#ff8800'}].map((s,i)=>h('div',{key:i,style:Object.assign({},gl,{borderRadius:'12px',padding:'16px',textAlign:'center'})},h('p',{style:{fontFamily:ORB,fontSize:'1.5rem',fontWeight:'bold',color:s.c}},s.v),h('p',{style:{color:'var(--text-muted)',fontSize:'9px',fontFamily:MONO,marginTop:'4px'}},s.l)))
     ),
@@ -1878,7 +1881,7 @@ function AdminDevices({students,onReload}) {
   );
 }
 
-function AdminLocation({settings,onSave}) {
+function AdminLocation({settings,onSave,onBack}) {
   const[name,setName]=useState(settings.locationName||'SMA Negeri 1');
   const[lat,setLat]=useState((settings.locationLat||(-6.2088)).toString());
   const[lng,setLng]=useState((settings.locationLng||106.8456).toString());
@@ -1888,7 +1891,7 @@ function AdminLocation({settings,onSave}) {
   const detect=async()=>{setDetecting(true);const l=await getGeo();setDetecting(false);if(l){setLat(l.lat.toFixed(8));setLng(l.lng.toFixed(8));}else alert('GPS tidak tersedia');};
   const iSt={padding:'10px 12px',borderRadius:'12px',fontSize:'14px',fontFamily:MONO};
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Lokasi Sekolah',color2:'#a855f7'}),
+    h(SectionHeader,{title:'Lokasi Sekolah',color2:'#a855f7',onBack}),
     h('div',{style:Object.assign({},gl,{borderRadius:'16px',padding:'24px',border:'1px solid rgba(168,85,247,.15)',textAlign:'center'})},
       h('div',{style:{fontSize:'48px',marginBottom:'12px'}},'\uD83D\uDCCD'),
       h('p',{style:{fontFamily:ORB,fontSize:'14px',color:'var(--text-secondary)'}},name||'Sekolah'),
@@ -1915,12 +1918,12 @@ function AdminLocation({settings,onSave}) {
   );
 }
 
-function AdminActivityLog() {
+function AdminActivityLog({onBack}) {
   const[logs,setLogs]=useState([]);const[loading,setLoading]=useState(true);
   useEffect(()=>{DB.getLogs().then(d=>{setLogs(d);setLoading(false);});},[]);
   if(loading)return h(LoadingScreen,{msg:'Memuat log...'});
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Activity Log',count:logs.length,color1:'#00ff88'}),
+    h(SectionHeader,{title:'Activity Log',count:logs.length,color1:'#00ff88',onBack}),
     logs.length===0?h('p',{style:{color:'var(--text-dim)',fontSize:'14px',fontFamily:MONO,textAlign:'center',padding:'32px'}},'Belum ada aktivitas'):
     h('div',{style:{display:'flex',flexDirection:'column',gap:'8px'}},
       logs.map(l=>h('div',{key:l.id,style:Object.assign({},gl,{borderRadius:'12px',padding:'12px',border:'1px solid var(--border)'})},
@@ -1938,7 +1941,7 @@ function AdminActivityLog() {
   );
 }
 
-function AdminSettings({settings,onSave}) {
+function AdminSettings({settings,onSave,onBack}) {
   const[form,setForm]=useState({
     schoolName:settings.schoolName||'',
     schoolStart:settings.schoolStart||'07:00',
@@ -1975,7 +1978,7 @@ function AdminSettings({settings,onSave}) {
   );
 
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'16px'}},
-    h(SectionHeader,{title:'Pengaturan Umum'}),
+    h(SectionHeader,{title:'Pengaturan Umum',onBack}),
 
     // Nama Sekolah
     h(Section,{title:'Identitas Sekolah',color:'var(--accent)'},
@@ -2090,10 +2093,10 @@ function StudentHome({student,records,settings,school,announcements,leaves,onOpe
   );
 }
 
-function StudentHistory({student,records,settings}) {
+function StudentHistory({student,records,settings,onBack}) {
   const myRecs=records.filter(r=>r.studentId===student.id);
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'16px'}},
-    h(SectionHeader,{title:'Riwayat Absensi',count:myRecs.length}),
+    h(SectionHeader,{title:'Riwayat Absensi',count:myRecs.length,onBack}),
     myRecs.length===0?h('div',{style:Object.assign({},gl,{borderRadius:'16px',padding:'48px',textAlign:'center'})},h('span',{style:{fontSize:'40px',display:'block',marginBottom:'12px'}},'\uD83D\uDCCB'),h('p',{style:{color:'var(--text-muted)',fontFamily:MONO,fontSize:'14px'}},'Belum ada data')):
     myRecs.map(r=>h('div',{key:r.id,style:Object.assign({},gl,{borderRadius:'16px',padding:'16px',border:'1px solid rgba(0,240,255,.05)'})},
       h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'12px'}},
@@ -2108,7 +2111,7 @@ function StudentHistory({student,records,settings}) {
   );
 }
 
-function StudentCalendar({student,records,settings,leaves}) {
+function StudentCalendar({student,records,settings,leaves,onBack}) {
   const[month,setMonth]=useState(new Date().getMonth());const[year,setYear]=useState(new Date().getFullYear());
   const myRecs=records.filter(r=>r.studentId===student.id);
   const myLeaves=leaves.filter(l=>l.studentId===student.id&&l.status==='approved');
@@ -2131,7 +2134,7 @@ function StudentCalendar({student,records,settings,leaves}) {
   const summary={present:0,late:0,absent:0,leave:0};
   days.forEach(d=>{const s=getStatus(d);if(s in summary)summary[s]++;});
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Kalender Kehadiran',color1:'#00ff88'}),
+    h(SectionHeader,{title:'Kalender Kehadiran',color1:'#00ff88',onBack}),
     h('div',{style:Object.assign({},gl,{borderRadius:'16px',padding:'20px',border:'1px solid var(--border)'})},
       h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:'16px'}},
         h('button',{onClick:()=>month===0?(setMonth(11),setYear(year-1)):setMonth(month-1),style:navBtnSt},'\u25C4'),
@@ -2154,7 +2157,7 @@ function StudentCalendar({student,records,settings,leaves}) {
   );
 }
 
-function StudentLeave({student,leaves,onReload}) {
+function StudentLeave({student,leaves,onReload,onBack}) {
   const[form,setForm]=useState({type:'izin',startDate:todayStr(),endDate:todayStr(),reason:''});
   const[showForm,setShowForm]=useState(false);const[saving,setSaving]=useState(false);
   const myLeaves=leaves.filter(l=>l.studentId===student.id);
@@ -2168,7 +2171,7 @@ function StudentLeave({student,leaves,onReload}) {
     await onReload();setSaving(false);setShowForm(false);setForm({type:'izin',startDate:todayStr(),endDate:todayStr(),reason:''});
   };
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Izin & Dispensasi',color1:'#a855f7',right:h('button',{onClick:()=>setShowForm(true),style:{padding:'8px 16px',borderRadius:'12px',background:'rgba(168,85,247,.1)',border:'1px solid rgba(168,85,247,.3)',color:'#a855f7',fontSize:'12px',fontFamily:MONO,cursor:'pointer'}},'+ Ajukan')}),
+    h(SectionHeader,{title:'Izin & Dispensasi',color1:'#a855f7',right:h('button',{onClick:()=>setShowForm(true),style:{padding:'8px 16px',borderRadius:'12px',background:'rgba(168,85,247,.1)',border:'1px solid rgba(168,85,247,.3)',color:'#a855f7',fontSize:'12px',fontFamily:MONO,cursor:'pointer',onBack}},'+ Ajukan')}),
     h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}},
       [{v:myLeaves.filter(l=>l.status==='pending').length,l:'Pending',c:'#facc15'},{v:myLeaves.filter(l=>l.status==='approved').length,l:'Disetujui',c:'#00ff88'},{v:myLeaves.filter(l=>l.status==='rejected').length,l:'Ditolak',c:'#f87171'}].map((s,i)=>h('div',{key:i,style:Object.assign({},gl,{borderRadius:'12px',padding:'12px',textAlign:'center'})},h('p',{style:{fontFamily:ORB,fontSize:'20px',fontWeight:'bold',color:s.c}},s.v),h('p',{style:{color:'var(--text-muted)',fontSize:'8px',fontFamily:MONO,marginTop:'4px'}},s.l)))
     ),
@@ -2198,7 +2201,7 @@ function StudentLeave({student,leaves,onReload}) {
   );
 }
 
-function StudentProfile({student,records,settings}) {
+function StudentProfile({student,records,settings,onBack}) {
   const myRecs=records.filter(r=>r.studentId===student.id);
   const total=myRecs.length;const onTime=myRecs.filter(r=>r.clockIn&&!isLate(r.clockIn,settings.schoolStart)).length;
   const lateCount=myRecs.filter(r=>r.clockIn&&isLate(r.clockIn,settings.schoolStart)).length;
@@ -2275,7 +2278,7 @@ function calcAttendance(records, settings, holidays) {
 // ============================================================
 // ADMIN: HALAMAN REKAP STATISTIK BULANAN
 // ============================================================
-function AdminRekapBulanan({records,students,settings,holidays}) {
+function AdminRekapBulanan({records,students,settings,holidays,onBack}) {
   const [selMonth,setSelMonth]=useState(new Date().getMonth());
   const [selYear,setSelYear]=useState(new Date().getFullYear());
   const [selKelas,setSelKelas]=useState('');
@@ -2327,7 +2330,7 @@ function AdminRekapBulanan({records,students,settings,holidays}) {
   };
 
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Rekap Bulanan',color1:'#00ff88',color2:'#00f0ff'}),
+    h(SectionHeader,{title:'Rekap Bulanan',color1:'#00ff88',color2:'#00f0ff',onBack}),
     h('div',{style:{display:'flex',gap:'8px',flexWrap:'wrap'}},
       h('select',{value:selMonth,onChange:e=>setSelMonth(+e.target.value),style:{padding:'8px 12px',borderRadius:'10px',fontSize:'12px',background:'var(--input-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',fontFamily:'JetBrains Mono,monospace'}},
         months.map((m,i)=>h('option',{key:i,value:i},m))),
@@ -2411,7 +2414,7 @@ const cetakKartuSiswa = async (students, filterKelas) => {
 // ============================================================
 // ADMIN: MANAJEMEN HARI LIBUR
 // ============================================================
-function AdminHolidays({holidays,onReload}) {
+function AdminHolidays({holidays,onReload,onBack}) {
   const [form,setForm]=useState({date:'',name:'',type:'national'});
   const [saving,setSaving]=useState(false);
   const upcoming=holidays.filter(h=>h.date>=todayStr()).slice(0,10);
@@ -2428,7 +2431,7 @@ function AdminHolidays({holidays,onReload}) {
   const typeLabel=t=>t==='national'?'🇮🇩 Nasional':t==='school'?'🏫 Sekolah':'🕌 Agama';
   const typeColor=t=>t==='national'?'#f87171':t==='school'?'#00f0ff':'#a855f7';
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Hari Libur',count:holidays.length,color1:'#ff8800'}),
+    h(SectionHeader,{title:'Hari Libur',count:holidays.length,color1:'#ff8800',onBack}),
     h('div',{style:{background:'var(--bg-panel)',backdropFilter:'blur(20px)',borderRadius:'16px',padding:'20px',border:'1px solid rgba(255,136,0,.15)',display:'flex',flexDirection:'column',gap:'12px'}},
       h('p',{style:{fontFamily:'Orbitron,monospace',fontSize:'11px',color:'rgba(255,136,0,.7)',letterSpacing:'0.1em',textTransform:'uppercase'}},'Tambah Hari Libur'),
       h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}},
@@ -2462,7 +2465,7 @@ function AdminHolidays({holidays,onReload}) {
 // ============================================================
 // ADMIN: BACKUP & RESTORE DATA
 // ============================================================
-function AdminBackup({students,records,leaves,announcements,settings}) {
+function AdminBackup({students,records,leaves,announcements,settings,onBack}) {
   const [restoring,setRestoring]=useState(false);
   const backup=()=>{
     const data={version:'AbsensiKu-v2',exportedAt:new Date().toISOString(),settings,students,records,leaves,announcements};
@@ -2489,7 +2492,7 @@ function AdminBackup({students,records,leaves,announcements,settings}) {
     setRestoring(false); e.target.value='';
   };
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'16px'}},
-    h(SectionHeader,{title:'Backup & Restore',color1:'#a855f7'}),
+    h(SectionHeader,{title:'Backup & Restore',color1:'#a855f7',onBack}),
     h('div',{style:{background:'var(--bg-panel)',backdropFilter:'blur(20px)',borderRadius:'16px',padding:'24px',border:'1px solid rgba(168,85,247,.15)',display:'flex',flexDirection:'column',gap:'16px'}},
       h('div',{style:{textAlign:'center',padding:'16px'}},
         h('div',{style:{fontSize:'48px',marginBottom:'12px'}},'💾'),
@@ -2511,7 +2514,7 @@ function AdminBackup({students,records,leaves,announcements,settings}) {
 // ============================================================
 // ADMIN: MULTI-ADMIN MANAGEMENT
 // ============================================================
-function AdminMultiAdmin({onReload}) {
+function AdminMultiAdmin({onReload,onBack}) {
   const [admins,setAdmins]=useState([]);
   const [loading,setLoading]=useState(true);
   const [showForm,setShowForm]=useState(false);
@@ -2531,7 +2534,7 @@ function AdminMultiAdmin({onReload}) {
   if(loading)return h(LoadingScreen,{msg:'Memuat admin...'});
   const roleColor=r=>r==='superadmin'?'#f87171':r==='admin'?'#00f0ff':'#a855f7';
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Manajemen Admin',count:admins.length,color1:'#f87171',right:h('button',{onClick:()=>setShowForm(true),style:{padding:'8px 14px',borderRadius:'10px',background:'var(--accent-bg)',border:'1px solid rgba(0,240,255,.3)',color:'var(--accent)',fontSize:'10px',fontFamily:'JetBrains Mono,monospace',cursor:'pointer'}},'+ Tambah')}),
+    h(SectionHeader,{title:'Manajemen Admin',count:admins.length,color1:'#f87171',right:h('button',{onClick:()=>setShowForm(true),style:{padding:'8px 14px',borderRadius:'10px',background:'var(--accent-bg)',border:'1px solid rgba(0,240,255,.3)',color:'var(--accent)',fontSize:'10px',fontFamily:'JetBrains Mono,monospace',cursor:'pointer',onBack}},'+ Tambah')}),
     h('div',{style:{background:'rgba(239,68,68,.05)',borderRadius:'12px',padding:'12px',border:'1px solid rgba(239,68,68,.15)'}},
       h('p',{style:{color:'rgba(248,113,113,.6)',fontSize:'10px',fontFamily:'JetBrains Mono,monospace',lineHeight:'1.6'}},'ℹ️ Superadmin: akses penuh termasuk Pengaturan, Backup, & Kelola Admin. Admin: hanya absensi, siswa, izin, WA, rekap, QR, guru. Buat table "admins" di Supabase dahulu.')
     ),
@@ -2568,7 +2571,7 @@ function AdminMultiAdmin({onReload}) {
 // ============================================================
 // ADMIN: JADWAL ABSEN OTOMATIS
 // ============================================================
-function AdminSchedule({settings,onSave}) {
+function AdminSchedule({settings,onSave,onBack}) {
   const [form,setForm]=useState({
     schoolStart:settings.schoolStart||'07:00',
     schoolEnd:settings.schoolEnd||'15:00',
@@ -2593,7 +2596,7 @@ function AdminSchedule({settings,onSave}) {
     h('input',{className:'di',type:'time',value:form[k],onChange:e=>setForm(Object.assign({},form,{[k]:e.target.value})),style:{padding:'10px 12px',borderRadius:'10px',fontSize:'14px'}})
   );
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'16px'}},
-    h(SectionHeader,{title:'Jadwal Absen',color1:'#facc15'}),
+    h(SectionHeader,{title:'Jadwal Absen',color1:'#facc15',onBack}),
     h('div',{style:{background:'var(--bg-panel)',backdropFilter:'blur(20px)',borderRadius:'16px',padding:'20px',border:'1px solid rgba(250,204,21,.15)',display:'flex',flexDirection:'column',gap:'14px'}},
       h('p',{style:{fontFamily:'Orbitron,monospace',fontSize:'10px',color:'rgba(250,204,21,.7)',letterSpacing:'0.2em',textTransform:'uppercase'}},'Waktu Absen'),
       h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}},
@@ -2654,7 +2657,7 @@ const fonnteKirimBulk = async (token, targets, message, device='', onProgress) =
 // ============================================================
 // ADMIN: KIRIM WA (Fonnte)
 // ============================================================
-function AdminWA({students, records, settings, onReload}) {
+function AdminWA({students, records, settings, onReload,onBack}) {
   const [tab, setTab] = React.useState('alpha'); // alpha | terlambat | laporan | pengumuman
   const [selIds, setSelIds] = React.useState(new Set());
   const [msg, setMsg] = React.useState('');
@@ -2921,7 +2924,7 @@ function StudentAttendanceGrade({student,records,settings,holidays}) {
 // ============================================================
 // STUDENT: KARTU SISWA DIGITAL
 // ============================================================
-function StudentKartu({student, settings}) {
+function StudentKartu({student, settings,onBack}) {
   const ref = useRef(null);
   useEffect(()=>{
     if(!ref.current||!window.QRCode) return;
@@ -3046,7 +3049,7 @@ function StudentQR({student}) {
 // ============================================================
 // ADMIN: QR CODE SCANNER
 // ============================================================
-function AdminQRScanner({students, records, settings, onReload}) {
+function AdminQRScanner({students, records, settings, onReload,onBack}) {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const streamRef = useRef(null);
@@ -3452,7 +3455,7 @@ function genId(){ return Date.now().toString(36)+Math.random().toString(36).slic
 function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 
 // ── ADMIN CBT PANEL ────────────────────────────────────────────────
-function AdminCBT({students,settings,isSuperAdmin}) {
+function AdminCBT({students,settings,isSuperAdmin,onBack}) {
   const [tab,setTab]=useState('exams');
   const [exams,setExams]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -3544,7 +3547,7 @@ function CbtExamList({exams,onReload,onEdit,onEditQ,onDelete}) {
             h('span',{style:{padding:'2px 8px',borderRadius:'20px',fontSize:'9px',fontFamily:MONO,background:statusColor[e.status]+'18',color:statusColor[e.status],border:'1px solid '+statusColor[e.status]+'30'}},statusLabel[e.status]||e.status)
           ),
           h('div',{style:{display:'flex',gap:'16px',flexWrap:'wrap'}},
-            [{l:'Kelas',v:e.kelas},{l:'Mapel',v:e.mapel},{l:'Durasi',v:e.duration_minutes+'mnt'},{l:'Dibuat',v:e.created_by}].map((x,i)=>
+            [{l:'Kelas',v:e.kelas},{l:'Mapel',v:e.mapel},{l:'Durasi',v:e.duration_minutes+'mnt'},{l:'Token',v:e.token||'—'},{l:'Nilai',v:e.show_score!==false?'Tampil':'Tersembunyi'},{l:'Dibuat',v:e.created_by}].map((x,i)=>
               h('span',{key:i,style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)'}},x.l+': ',h('span',{style:{color:'var(--text-secondary)'}},x.v))
             )
           ),
@@ -3611,12 +3614,21 @@ function CbtExamModal({exam,onClose,onSave}) {
           {key:'shuffle_questions',label:'🔀 Acak urutan soal'},
           {key:'shuffle_answers',  label:'🔀 Acak pilihan jawaban'},
           {key:'allow_essay',      label:'📝 Izinkan soal essay'},
+          {key:'show_score',       label:'📊 Tampilkan nilai ke siswa setelah ujian'},
         ].map(({key,label})=>
           h('label',{style:{display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontFamily:MONO,fontSize:'11px',color:'var(--text-secondary)'}},
-            h('input',{type:'checkbox',checked:!!f[key],onChange:e=>upd(key)(e.target.checked),style:{width:'16px',height:'16px',accentColor:'var(--accent)'}}),
+            h('input',{type:'checkbox',checked:f[key]!==undefined?!!f[key]:key==='show_score'?true:false,onChange:e=>upd(key)(e.target.checked),style:{width:'16px',height:'16px',accentColor:'var(--accent)'}}),
             label
           )
         )
+      ),
+      h('div',null,
+        h('label',{style:LBL},'🔑 Token Ujian (opsional)'),
+        h('div',{style:{display:'flex',gap:'8px',alignItems:'center'}},
+          h('input',{type:'text',value:f.token||'',onChange:e=>upd('token')(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'')),placeholder:'Kosongkan = tanpa token',style:{...inSt,flex:1,letterSpacing:'0.2em',fontWeight:'bold'},maxLength:8}),
+          h('button',{onClick:()=>upd('token')(Math.random().toString(36).slice(2,8).toUpperCase()),style:{padding:'10px 12px',borderRadius:'10px',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'10px',whiteSpace:'nowrap'}},'🎲 Generate')
+        ),
+        h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-dim)',marginTop:'4px'}},'Jika diisi, siswa harus memasukkan token ini sebelum ujian dimulai')
       ),
       h('div',{style:{padding:'12px',borderRadius:'12px',background:'rgba(250,204,21,.05)',border:'1px solid rgba(250,204,21,.15)'}},
         h('p',{style:{fontFamily:ORB,fontSize:'10px',color:'#facc15',marginBottom:'10px',letterSpacing:'.06em'}},'⚡ PENGATURAN PERFORMA'),
@@ -3746,7 +3758,7 @@ function CbtQuestionEditor({q,onClose,onSave,allowEssay}) {
     h('div',{onClick:e=>e.stopPropagation(),style:{width:'min(480px,100%)',background:'var(--bg-panel-s)',borderRadius:'18px',border:'1px solid var(--accent-dim)',padding:'20px',display:'flex',flexDirection:'column',gap:'12px',maxHeight:'90vh',overflowY:'auto'}},
       h('h4',{style:{fontFamily:ORB,color:'var(--accent)',fontSize:'12px',letterSpacing:'.08em'}},'✏️ '+(f.question?'Edit':'Tambah')+' Soal'),
       h('div',{style:{display:'flex',gap:'6px',flexWrap:'wrap'}},
-        ['pg','mcma','tf',...(allowEssay?['essay']:['essay'])].map(t=>h('button',{key:t,onClick:()=>{upd('type')(t);if(t==='mcma')upd('correct_answer')([]);},style:{flex:'1 1 auto',padding:'8px',borderRadius:'8px',fontFamily:MONO,fontSize:'10px',cursor:'pointer',border:'1px solid',background:f.type===t?'var(--accent-bg)':'transparent',color:f.type===t?'var(--accent)':'var(--text-muted)',borderColor:f.type===t?'var(--accent-dim)':'var(--border)'}},{pg:'PG',mcma:'MCMA',essay:'Essay',tf:'B/S'}[t]))
+        ['pg','mcma','tf',...(allowEssay?['essay']:[])].map(t=>h('button',{key:t,onClick:()=>{upd('type')(t);if(t==='mcma')upd('correct_answer')([]);},style:{flex:'1 1 auto',padding:'8px',borderRadius:'8px',fontFamily:MONO,fontSize:'10px',cursor:'pointer',border:'1px solid',background:f.type===t?'var(--accent-bg)':'transparent',color:f.type===t?'var(--accent)':'var(--text-muted)',borderColor:f.type===t?'var(--accent-dim)':'var(--border)'}},{pg:'📋 Pilihan Ganda',mcma:'☑️ Multi Jawaban',essay:'✏️ Essay',tf:'✅ Benar/Salah'}[t]))
       ),
       h('div',null,h('label',{style:LBL},'Pertanyaan'),h('textarea',{value:f.question,onChange:e=>upd('question')(e.target.value),rows:3,placeholder:'Tulis pertanyaan...',style:{...inSt,resize:'vertical'}})),
       h(MediaUploader,{value:f.media_url||null,onChange:v=>setF(p=>({...p,media_url:v,media_type:v?getMediaKind(v):null})),label:'Media Soal (Opsional)',accept:'image/*,audio/*,video/*',maxMB:10}),
@@ -4033,14 +4045,18 @@ function CbtExamCard({exam,student,isDemo,onStart}) {
         h('div',{style:{display:'flex',gap:'12px',flexWrap:'wrap'}},
           [{i:'⏱',l:'Durasi: '+exam.duration_minutes+' mnt'},{i:'🔀',l:exam.shuffle_questions?'Soal diacak':'Soal tetap'}].map((x,i)=>
             h('span',{key:i,style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-dim)'}},x.i+' '+x.l)
-          )
+          ),
+          exam.token&&h('span',{style:{fontFamily:MONO,fontSize:'9px',color:'#facc15',background:'rgba(250,204,21,.08)',padding:'2px 8px',borderRadius:'6px',border:'1px solid rgba(250,204,21,.2)'}},'🔑 Butuh Token')
         )
       ),
       checking?h('div',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-muted)'}},'...'):
       status==='submitted'?
         h('div',{style:{textAlign:'center'}},
-          h('p',{style:{fontFamily:ORB,fontSize:'22px',color:'#00ff88',fontWeight:'bold'}},session.score!=null?session.score+'%':'✓'),
-          h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'#00ff88',letterSpacing:'.15em'}},session.score!=null?'NILAI':'SELESAI')
+          exam.show_score!==false&&session.score!=null
+            ?h('p',{style:{fontFamily:ORB,fontSize:'22px',color:'#00ff88',fontWeight:'bold'}},session.score+'%')
+            :h('p',{style:{fontFamily:ORB,fontSize:'22px',color:'#00ff88',fontWeight:'bold'}},'✓'),
+          h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'#00ff88',letterSpacing:'.15em'}},
+            exam.show_score!==false&&session.score!=null?'NILAI':'SELESAI')
         ):
       status==='ongoing'?
         h('button',{onClick:onStart,style:{padding:'12px 20px',borderRadius:'12px',background:'rgba(251,146,60,.1)',border:'1px solid rgba(251,146,60,.3)',color:'#fb923c',cursor:'pointer',fontFamily:ORB,fontSize:'10px',fontWeight:'bold',letterSpacing:'.05em',whiteSpace:'nowrap'}},'▶ LANJUTKAN'):
@@ -4066,6 +4082,9 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   const [showWarning,setShowWarning]=useState(null);
   const [submitted,setSubmitted]=useState(false);
   const [confirmSubmit,setConfirmSubmit]=useState(false);
+  const [tokenInput,setTokenInput]=useState('');
+  const [tokenPassed,setTokenPassed]=useState(!exam.token||isDemo);
+  const [tokenError,setTokenError]=useState('');
   const videoRef=useRef(null);
   const canvasRef=useRef(null);
   const sessionRef=useRef(null);
@@ -4248,7 +4267,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
 
   // ── Anti-nyontek: fullscreen ──────────────────────────────────────
   useEffect(()=>{
-    if(submitted||loading) return;
+    if(submitted||loading||!tokenPassed) return;
     const tryFullscreen=()=>{
       if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen().catch(()=>{});
     };
@@ -4315,6 +4334,29 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     }
   },[submitted,questions,answers,camStream,isDemo]);
 
+  // ── Token gate ───────────────────────────────────────────────────
+  if(!tokenPassed) return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}},
+    h('div',{style:{width:'100%',maxWidth:'400px',background:'var(--bg-panel-s)',borderRadius:'24px',padding:'32px 28px',border:'1px solid rgba(250,204,21,.3)',display:'flex',flexDirection:'column',gap:'20px',alignItems:'center',textAlign:'center'}},
+      h('div',{style:{fontSize:'48px'}},'🔑'),
+      h('h2',{style:{fontFamily:ORB,fontSize:'16px',color:'#facc15',letterSpacing:'.08em'}},'TOKEN UJIAN'),
+      h('p',{style:{fontFamily:MONO,fontSize:'11px',color:'var(--text-muted)',lineHeight:'1.6'}},exam.title),
+      h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-secondary)'}},'Masukkan token yang diberikan guru/admin untuk memulai ujian'),
+      h('div',{style:{width:'100%'}},
+        h('input',{type:'text',value:tokenInput,
+          onChange:e=>setTokenInput(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'')),
+          onKeyDown:e=>{if(e.key==='Enter'){if(tokenInput===exam.token){setTokenPassed(true);setTokenError('');}else setTokenError('Token salah, coba lagi.');}},
+          placeholder:'Ketik token di sini...',maxLength:8,
+          style:{width:'100%',padding:'16px',borderRadius:'14px',background:'var(--input-bg)',border:'2px solid '+(tokenError?'#f87171':'rgba(250,204,21,.3)'),color:'#facc15',fontFamily:ORB,fontSize:'22px',letterSpacing:'0.4em',textAlign:'center',boxSizing:'border-box',outline:'none'}}),
+        tokenError&&h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'#f87171',marginTop:'8px'}},tokenError)
+      ),
+      h('div',{style:{display:'flex',gap:'10px',width:'100%'}},
+        h('button',{onClick:onFinish,style:{flex:1,padding:'12px',borderRadius:'12px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer',fontFamily:MONO,fontSize:'11px'}},'← Kembali'),
+        h('button',{onClick:()=>{if(tokenInput===exam.token){setTokenPassed(true);setTokenError('');}else setTokenError('Token salah, coba lagi.');},
+          style:{flex:2,padding:'12px',borderRadius:'12px',background:'rgba(250,204,21,.12)',border:'1px solid rgba(250,204,21,.4)',color:'#facc15',cursor:'pointer',fontFamily:ORB,fontSize:'12px',fontWeight:'bold',letterSpacing:'.08em'}},'✓ MASUK UJIAN')
+      )
+    )
+  );
+
   // ── Render ────────────────────────────────────────────────────────
   if(loading) return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'24px',gap:'20px'}},
     h('div',{style:{width:'56px',height:'56px',borderRadius:'50%',border:'3px solid var(--accent-dim)',borderTopColor:'var(--accent)',animation:'spin 0.8s linear infinite'}}),
@@ -4332,14 +4374,15 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     const pgQ=questions.filter(q=>q.type!=='essay');
     const essQ=questions.filter(q=>q.type==='essay');
     let correct=0,total=0;
-    pgQ.forEach(q=>{total+=q.score||1;if(answers[q.id]===q.correct_answer)correct+=q.score||1;});
+    pgQ.forEach(q=>{total+=q.score||1;if(q.type==='mcma'){const cA=Array.isArray(q.correct_answer)?q.correct_answer:[];const sA=Array.isArray(answers[q.id])?answers[q.id]:[];if(cA.length>0){const pi=(q.score||1)/cA.length;let pts=0;cA.forEach(c=>{if(sA.includes(c))pts+=pi;});sA.forEach(s=>{if(!cA.includes(s))pts-=pi;});correct+=Math.max(0,Math.round(pts*10)/10);}}else{if(answers[q.id]===q.correct_answer)correct+=q.score||1;}});
     const pct=pgQ.length>0&&total>0?Math.round((correct/total)*100):null;
     const hasEssay=essQ.length>0;
     return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}},
       h('div',{style:{textAlign:'center',maxWidth:'400px'}},
         h('div',{style:{fontSize:'64px',marginBottom:'16px'}},'🎉'),
         h('h2',{style:{fontFamily:ORB,fontSize:'20px',color:'var(--accent)',letterSpacing:'.1em',marginBottom:'8px'}},'UJIAN SELESAI'),
-        pct!=null&&h('p',{style:{fontFamily:ORB,fontSize:'48px',fontWeight:'bold',color:pct>=80?'#00ff88':pct>=60?'#facc15':'#f87171',margin:'16px 0'}},pct+'%'),
+        exam.show_score!==false&&pct!=null&&h('p',{style:{fontFamily:ORB,fontSize:'48px',fontWeight:'bold',color:pct>=80?'#00ff88':pct>=60?'#facc15':'#f87171',margin:'16px 0'}},pct+'%'),
+        exam.show_score===false&&h('p',{style:{fontFamily:MONO,fontSize:'12px',color:'var(--text-muted)',margin:'16px 0',padding:'12px',borderRadius:'12px',background:'var(--bg-panel)',border:'1px solid var(--border)'}},'📋 Nilai akan diumumkan oleh guru/admin'),
         hasEssay&&h('p',{style:{fontFamily:MONO,fontSize:'11px',color:'var(--text-muted)',marginBottom:'8px'}},'*Soal essay menunggu penilaian guru'),
         violations.length>0&&h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'#f87171',marginBottom:'8px'}},'⚠️ '+violations.length+' pelanggaran tercatat'),
         h('button',{onClick:onFinish,style:{marginTop:'20px',padding:'14px 32px',borderRadius:'14px',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',cursor:'pointer',fontFamily:ORB,fontSize:'12px',fontWeight:'bold',letterSpacing:'.1em'}},'KEMBALI')
@@ -4398,7 +4441,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       q&&h('div',null,
         h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'16px'}},
           h('span',{style:{background:'var(--accent-bg)',color:'var(--accent)',fontFamily:MONO,fontSize:'9px',padding:'3px 8px',borderRadius:'6px',border:'1px solid var(--accent-dim)'}},'Soal '+(curQ+1)+'/'+questions.length),
-          h('span',{style:{background:q.type==='essay'?'rgba(168,85,247,.1)':'rgba(0,240,255,.08)',color:q.type==='essay'?'#a855f7':'#00f0ff',fontFamily:MONO,fontSize:'9px',padding:'3px 8px',borderRadius:'6px'}},{pg:'Pilihan Ganda',mcma:'Multi Jawaban',essay:'Essay',tf:'Benar/Salah'}[q.type]||q.type),
+          h('span',{style:{background:q.type==='essay'?'rgba(168,85,247,.1)':q.type==='mcma'?'rgba(251,146,60,.1)':q.type==='tf'?'rgba(250,204,21,.1)':'rgba(0,240,255,.08)',color:q.type==='essay'?'#a855f7':q.type==='mcma'?'#fb923c':q.type==='tf'?'#facc15':'#00f0ff',fontFamily:MONO,fontSize:'9px',padding:'3px 8px',borderRadius:'6px'}},{pg:'Pilihan Ganda',mcma:'Multi Jawaban',essay:'Essay',tf:'Benar/Salah'}[q.type]||q.type),
           h('span',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-dim)'}},q.score+' poin')
         ),
         h(MediaViewer,{url:q.media_url}),
@@ -4491,7 +4534,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
 
 
 // ── WALI KELAS CBT — lihat & monitor ujian kelas ──────────────────
-function WaliCBT({teacher, students, isDemo}) {
+function WaliCBT({teacher, students, isDemo,onBack}) {
   const [exams,setExams]=useState([]);
   const [loading,setLoading]=useState(true);
   const [selExam,setSelExam]=useState('');
@@ -4557,7 +4600,7 @@ function WaliCBT({teacher, students, isDemo}) {
 }
 
 // ── GURU MAPEL CBT — buat soal + monitor + nilai ──────────────────
-function GuruCBT({teacher, students, isDemo}) {
+function GuruCBT({teacher, students, isDemo,onBack}) {
   const [tab,setTab]=useState('exams');
   const [exams,setExams]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -4682,7 +4725,7 @@ function PasswordResetModal({target, targetType, onClose, onSave}) {
 }
 
 // Panel khusus superadmin — reset semua password
-function AdminPasswordManager({students, adminData}) {
+function AdminPasswordManager({students, adminData,onBack}) {
   const [tab,setTab]=useState('admins');
   const [admins,setAdmins]=useState([]);
   const [teachers,setTeachers]=useState([]);
@@ -4868,24 +4911,24 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
       h('main',{},
         loading?h(LoadingScreen,{msg:'Memuat data...'}):h(Fragment,null,
           page==='dashboard'&&h(AdminDashboard,{students,records,settings,leaves}),
-          page==='qrscan'&&h(AdminQRScanner,{students,records,settings,onReload:reload}),
-          page==='students'&&h(AdminStudents,{students,onReload:reload,settings}),
-          page==='attendance'&&h(AdminAttendance,{records,students,settings}),
-          page==='leaves'&&h(AdminLeaves,{leaves,onReload:reload}),
-          page==='announcements'&&h(AdminAnnouncements,{announcements:anns,onReload:reload,students}),
-          page==='devices'&&h(AdminDevices,{students,onReload:reload}),
-          page==='location'&&h(AdminLocation,{settings,onSave:saveSettings}),
-          page==='wa'&&h(AdminWA,{students,records,settings,onReload:reload}),
-          page==='teachers'&&h(AdminTeachers,{onReload:reload}),
-          page==='cbt'&&h(AdminCBT,{students,settings,isSuperAdmin}),
-          page==='rekap'&&h(AdminRekapBulanan,{records,students,settings,holidays}),
-          page==='holidays'&&h(AdminHolidays,{holidays,onReload:reload}),
-          page==='schedule'&&h(AdminSchedule,{settings,onSave:saveSettings}),
-          page==='multiadmin'&&(isSuperAdmin?h(AdminMultiAdmin,{onReload:reload}):h(AccessDenied,{msg:'Kelola Admin'})),
-          page==='backup'&&(isSuperAdmin?h(AdminBackup,{students,records,leaves,announcements:anns,settings}):h(AccessDenied,{msg:'Backup & Restore'})),
-          page==='activity'&&h(AdminActivityLog),
-          page==='settings'&&(isSuperAdmin?h(AdminSettings,{settings,onSave:saveSettings}):h(AccessDenied,{msg:'Pengaturan Sekolah'})),
-          page==='password'&&(isSuperAdmin?h(AdminPasswordManager,{students,adminData}):h(AccessDenied,{msg:'Reset Password'})),
+          page==='qrscan'&&h(AdminQRScanner,{onBack:()=>setPage('dashboard'),students,records,settings,onReload:reload}),
+          page==='students'&&h(AdminStudents,{onBack:()=>setPage('dashboard'),students,onReload:reload,settings}),
+          page==='attendance'&&h(AdminAttendance,{onBack:()=>setPage('dashboard'),records,students,settings}),
+          page==='leaves'&&h(AdminLeaves,{onBack:()=>setPage('dashboard'),leaves,onReload:reload}),
+          page==='announcements'&&h(AdminAnnouncements,{onBack:()=>setPage('dashboard'),announcements:anns,onReload:reload,students}),
+          page==='devices'&&h(AdminDevices,{onBack:()=>setPage('dashboard'),students,onReload:reload}),
+          page==='location'&&h(AdminLocation,{onBack:()=>setPage('dashboard'),settings,onSave:saveSettings}),
+          page==='wa'&&h(AdminWA,{onBack:()=>setPage('dashboard'),students,records,settings,onReload:reload}),
+          page==='teachers'&&h(AdminTeachers,{onBack:()=>setPage('dashboard'),onReload:reload}),
+          page==='cbt'&&h(AdminCBT,{onBack:()=>setPage('dashboard'),students,settings,isSuperAdmin}),
+          page==='rekap'&&h(AdminRekapBulanan,{onBack:()=>setPage('dashboard'),records,students,settings,holidays}),
+          page==='holidays'&&h(AdminHolidays,{onBack:()=>setPage('dashboard'),holidays,onReload:reload}),
+          page==='schedule'&&h(AdminSchedule,{onBack:()=>setPage('dashboard'),settings,onSave:saveSettings}),
+          page==='multiadmin'&&(isSuperAdmin?h(AdminMultiAdmin,{onBack:()=>setPage('dashboard'),onReload:reload}):h(AccessDenied,{msg:'Kelola Admin'})),
+          page==='backup'&&(isSuperAdmin?h(AdminBackup,{onBack:()=>setPage('dashboard'),students,records,leaves,announcements:anns,settings}):h(AccessDenied,{msg:'Backup & Restore'})),
+          page==='activity'&&h(AdminActivityLog,{onBack:()=>setPage('dashboard')}),
+          page==='settings'&&(isSuperAdmin?h(AdminSettings,{onBack:()=>setPage('dashboard'),settings,onSave:saveSettings}):h(AccessDenied,{msg:'Pengaturan Sekolah'})),
+          page==='password'&&(isSuperAdmin?h(AdminPasswordManager,{onBack:()=>setPage('dashboard'),students,adminData}):h(AccessDenied,{msg:'Reset Password'})),
           page==='settings'&&isSuperAdmin&&h('div',{style:Object.assign({},gl,{borderRadius:'16px',padding:'20px',border:'1px solid rgba(239,68,68,.15)',marginTop:'20px'})},h('p',{style:{fontFamily:ORB,fontSize:'12px',color:'rgba(248,113,113,.7)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'12px'}},'Danger Zone'),h('button',{onClick:clearRecords,style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'12px',fontFamily:MONO,color:'#f87171',border:'1px solid rgba(239,68,68,.3)',background:'rgba(239,68,68,.05)',cursor:'pointer'}},'Hapus Semua Absensi'))
         )
       )
@@ -4910,24 +4953,24 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
     ),
     h('main',{style:{position:'relative',zIndex:10,maxWidth:'512px',margin:'0 auto',padding:'24px 16px 112px'}},
       page==='dashboard'&&h(AdminDashboard,{students,records,settings,leaves}),
-      page==='students'&&h(AdminStudents,{students,onReload:reload,settings}),
-      page==='attendance'&&h(AdminAttendance,{records,students,settings}),
-      page==='leaves'&&h(AdminLeaves,{leaves,onReload:reload}),
-      page==='announcements'&&h(AdminAnnouncements,{announcements:anns,onReload:reload,students}),
-      page==='devices'&&h(AdminDevices,{students,onReload:reload}),
-      page==='location'&&h(AdminLocation,{settings,onSave:saveSettings}),
-      page==='qrscan'&&h(AdminQRScanner,{students,records,settings,onReload:reload}),
-      page==='wa'&&h(AdminWA,{students,records,settings,onReload:reload}),
-      page==='teachers'&&h(AdminTeachers,{onReload:reload}),
-      page==='cbt'&&h(AdminCBT,{students,settings,isSuperAdmin}),
-      page==='rekap'&&h(AdminRekapBulanan,{records,students,settings,holidays}),
-      page==='holidays'&&h(AdminHolidays,{holidays,onReload:reload}),
-      page==='schedule'&&h(AdminSchedule,{settings,onSave:saveSettings}),
-      page==='multiadmin'&&(isSuperAdmin?h(AdminMultiAdmin,{onReload:reload}):h(AccessDenied,{msg:'Kelola Admin'})),
-      page==='backup'&&(isSuperAdmin?h(AdminBackup,{students,records,leaves,announcements:anns,settings}):h(AccessDenied,{msg:'Backup & Restore'})),
-      page==='activity'&&h(AdminActivityLog),
-      page==='settings'&&(isSuperAdmin?h(AdminSettings,{settings,onSave:saveSettings}):h(AccessDenied,{msg:'Pengaturan Sekolah'})),
-      page==='password'&&(isSuperAdmin?h(AdminPasswordManager,{students,adminData}):h(AccessDenied,{msg:'Reset Password'})),
+      page==='students'&&h(AdminStudents,{onBack:()=>setPage('dashboard'),students,onReload:reload,settings}),
+      page==='attendance'&&h(AdminAttendance,{onBack:()=>setPage('dashboard'),records,students,settings}),
+      page==='leaves'&&h(AdminLeaves,{onBack:()=>setPage('dashboard'),leaves,onReload:reload}),
+      page==='announcements'&&h(AdminAnnouncements,{onBack:()=>setPage('dashboard'),announcements:anns,onReload:reload,students}),
+      page==='devices'&&h(AdminDevices,{onBack:()=>setPage('dashboard'),students,onReload:reload}),
+      page==='location'&&h(AdminLocation,{onBack:()=>setPage('dashboard'),settings,onSave:saveSettings}),
+      page==='qrscan'&&h(AdminQRScanner,{onBack:()=>setPage('dashboard'),students,records,settings,onReload:reload}),
+      page==='wa'&&h(AdminWA,{onBack:()=>setPage('dashboard'),students,records,settings,onReload:reload}),
+      page==='teachers'&&h(AdminTeachers,{onBack:()=>setPage('dashboard'),onReload:reload}),
+      page==='cbt'&&h(AdminCBT,{onBack:()=>setPage('dashboard'),students,settings,isSuperAdmin}),
+      page==='rekap'&&h(AdminRekapBulanan,{onBack:()=>setPage('dashboard'),records,students,settings,holidays}),
+      page==='holidays'&&h(AdminHolidays,{onBack:()=>setPage('dashboard'),holidays,onReload:reload}),
+      page==='schedule'&&h(AdminSchedule,{onBack:()=>setPage('dashboard'),settings,onSave:saveSettings}),
+      page==='multiadmin'&&(isSuperAdmin?h(AdminMultiAdmin,{onBack:()=>setPage('dashboard'),onReload:reload}):h(AccessDenied,{msg:'Kelola Admin'})),
+      page==='backup'&&(isSuperAdmin?h(AdminBackup,{onBack:()=>setPage('dashboard'),students,records,leaves,announcements:anns,settings}):h(AccessDenied,{msg:'Backup & Restore'})),
+      page==='activity'&&h(AdminActivityLog,{onBack:()=>setPage('dashboard')}),
+      page==='settings'&&(isSuperAdmin?h(AdminSettings,{onBack:()=>setPage('dashboard'),settings,onSave:saveSettings}):h(AccessDenied,{msg:'Pengaturan Sekolah'})),
+      page==='password'&&(isSuperAdmin?h(AdminPasswordManager,{onBack:()=>setPage('dashboard'),students,adminData}):h(AccessDenied,{msg:'Reset Password'})),
       page==='settings'&&isSuperAdmin&&h('div',{style:Object.assign({},gl,{borderRadius:'16px',padding:'20px',border:'1px solid rgba(239,68,68,.15)',marginTop:'20px'})},h('p',{style:{fontFamily:ORB,fontSize:'12px',color:'rgba(248,113,113,.7)',letterSpacing:'0.1em',textTransform:'uppercase',marginBottom:'12px'}},'Danger Zone'),h('button',{onClick:clearRecords,style:{width:'100%',padding:'12px',borderRadius:'12px',fontSize:'12px',fontFamily:MONO,color:'#f87171',border:'1px solid rgba(239,68,68,.3)',background:'rgba(239,68,68,.05)',cursor:'pointer'}},'Hapus Semua Absensi'))
     ),
     h(NavBar,{items:nav,active:page,onSelect:setPage}),
@@ -5023,11 +5066,11 @@ function StudentPanel({student,onLogout,isDemo=false}) {
           toast&&h('div',{style:{position:'fixed',top:'20px',right:'20px',zIndex:100,background:toast.type==='success'?'rgba(0,255,136,.15)':'rgba(239,68,68,.15)',backdropFilter:'blur(20px)',borderRadius:'14px',padding:'12px 20px',border:'1px solid '+(toast.type==='success'?'rgba(0,255,136,.4)':'rgba(239,68,68,.4)')}},h('p',{style:{color:toast.type==='success'?'#00ff88':'#f87171',fontFamily:MONO,fontSize:'12px'}},toast.msg)),
           loading?h(LoadingScreen,{msg:'Memuat...'}):h(Fragment,null,
             page==='home'&&h(StudentHome,{student,records,settings,school:settings,announcements:anns,leaves,onOpenCamera:act=>{setCamAction(act);setPage('camera');}}),
-            page==='history'&&h(StudentHistory,{student,records,settings}),
-            page==='kartu'&&h(StudentKartu,{student,settings}),
+            page==='history'&&h(StudentHistory,{onBack:()=>setPage('home'),student,records,settings}),
+            page==='kartu'&&h(StudentKartu,{onBack:()=>setPage('home'),student,settings}),
             page==='cbt'&&h(StudentCBT,{student,settings,isDemo}),
-            page==='leave'&&h(StudentLeave,{student,leaves,onReload:reload,isDemo}),
-            page==='profile'&&h(StudentProfile,{student,records,settings})
+            page==='leave'&&h(StudentLeave,{onBack:()=>setPage('home'),student,leaves,onReload:reload,isDemo}),
+            page==='profile'&&h(StudentProfile,{onBack:()=>setPage('home'),student,records,settings})
           ),
           page==='camera'&&camAction&&h(CameraCapture,{mode:camAction,student,settings,onDone:async(photo,loc)=>{if(!isDemo){await doAbsen(camAction,photo,loc);}else{showToast('Mode Demo: absen tidak disimpan','info');}setCamAction(null);setPage('home');}})
         )
@@ -5055,12 +5098,12 @@ function StudentPanel({student,onLogout,isDemo=false}) {
     ),
     h('main',{style:{position:'relative',zIndex:10,maxWidth:'512px',margin:'0 auto',padding:'24px 16px 112px'}},
       page==='home'&&h(StudentHome,{student,records,settings,school:settings,announcements:anns,leaves,onOpenCamera:a=>setCamAction(a)}),
-      page==='history'&&h(StudentHistory,{student,records,settings}),
-      page==='calendar'&&h(StudentCalendar,{student,records,settings,leaves}),
-      page==='kartu'&&h(StudentKartu,{student,settings}),
+      page==='history'&&h(StudentHistory,{onBack:()=>setPage('home'),student,records,settings}),
+      page==='calendar'&&h(StudentCalendar,{onBack:()=>setPage('home'),student,records,settings,leaves}),
+      page==='kartu'&&h(StudentKartu,{onBack:()=>setPage('home'),student,settings}),
       page==='cbt'&&h(StudentCBT,{student,settings,isDemo}),
-      page==='leave'&&h(StudentLeave,{student,leaves,onReload:reload}),
-      page==='profile'&&h(StudentProfile,{student,records,settings})
+      page==='leave'&&h(StudentLeave,{onBack:()=>setPage('home'),student,leaves,onReload:reload}),
+      page==='profile'&&h(StudentProfile,{onBack:()=>setPage('home'),student,records,settings})
     ),
     h(NavBar,{items:nav,active:page,onSelect:setPage}),
     showTheme&&h(ThemePicker,{onClose:()=>setShowTheme(false)}),
@@ -5071,7 +5114,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
 // ================================================================
 // ADMIN: KELOLA GURU (Wali Kelas & Guru Mapel)
 // ================================================================
-function AdminTeachers({onReload}) {
+function AdminTeachers({onReload,onBack}) {
   const [teachers, setTeachers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -5115,7 +5158,7 @@ function AdminTeachers({onReload}) {
 
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'16px'}},
     h(SectionHeader,{title:'Kelola Guru',count:teachers.length,color1:'#facc15',color2:'#a855f7',
-      right:h('button',{onClick:openAdd,style:{padding:'8px 14px',borderRadius:'10px',background:'rgba(250,204,21,.1)',border:'1px solid rgba(250,204,21,.3)',color:'#facc15',fontSize:'10px',fontFamily:MONO,cursor:'pointer',whiteSpace:'nowrap'}},'+ Tambah')
+      right:h('button',{onClick:openAdd,style:{padding:'8px 14px',borderRadius:'10px',background:'rgba(250,204,21,.1)',border:'1px solid rgba(250,204,21,.3)',color:'#facc15',fontSize:'10px',fontFamily:MONO,cursor:'pointer',whiteSpace:'nowrap',onBack}},'+ Tambah')
     }),
 
     h('div',{style:{padding:'12px 14px',borderRadius:'12px',background:'rgba(250,204,21,.05)',border:'1px solid rgba(250,204,21,.15)'}},
@@ -5143,8 +5186,8 @@ function AdminTeachers({onReload}) {
         )),
 
     // Modal form
-    showForm&&h('div',{onClick:()=>setShowForm(false),style:{position:'fixed',inset:0,zIndex:9990,display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'16px',paddingTop:'max(16px,env(safe-area-inset-top))',overflowY:'auto',background:'rgba(0,0,0,.75)',backdropFilter:'blur(8px)'}},
-      h('div',{onClick:e=>e.stopPropagation(),style:{width:'100%',maxWidth:'480px',background:'var(--bg-panel-s)',borderRadius:'20px',padding:'24px 20px',border:'1px solid rgba(250,204,21,.3)',display:'flex',flexDirection:'column',gap:'16px',backdropFilter:'blur(40px)',marginBottom:'16px'}},
+    showForm&&h('div',{onClick:()=>setShowForm(false),style:{position:'fixed',inset:0,zIndex:9990,display:'flex',alignItems:'center',justifyContent:'center',padding:'12px',background:'rgba(0,0,0,.75)',backdropFilter:'blur(8px)'}},
+      h('div',{onClick:e=>e.stopPropagation(),style:{width:'100%',maxWidth:'480px',maxHeight:'calc(100vh - 24px)',overflowY:'auto',background:'var(--bg-panel-s)',borderRadius:'20px',padding:'24px 20px',border:'1px solid rgba(250,204,21,.3)',display:'flex',flexDirection:'column',gap:'14px',backdropFilter:'blur(40px)'}},
         h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',paddingBottom:'12px',borderBottom:'1px solid var(--border)'}},
           h('h3',{style:{fontFamily:ORB,fontSize:'13px',color:'#facc15'}},(editId?'Edit':'Tambah')+' Guru'),
           h('button',{onClick:()=>setShowForm(false),style:{background:'var(--bg-card)',border:'1px solid var(--border)',borderRadius:'8px',color:'var(--text-muted)',padding:'4px 10px',cursor:'pointer'}},'✕')
@@ -5154,13 +5197,13 @@ function AdminTeachers({onReload}) {
         h('div',null,
           h('label',{style:LBL},'Role / Jabatan'),
           h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px',marginTop:'8px'}},
-            h('button',{onClick:()=>setForm(prev=>Object.assign({},prev,{role:'wali'})),style:{padding:'16px 8px',borderRadius:'14px',fontSize:'12px',fontFamily:MONO,cursor:'pointer',border:'2px solid',display:'flex',flexDirection:'column',alignItems:'center',gap:'6px',background:form.role==='wali'?'rgba(250,204,21,.15)':'transparent',color:form.role==='wali'?'#facc15':'var(--text-muted)',borderColor:form.role==='wali'?'#facc15':'var(--border)',transition:'all .2s',fontWeight:form.role==='wali'?'bold':'normal'}},
-              h('span',{style:{fontSize:'24px'}},'🏫'),
+            h('button',{onClick:()=>setForm(prev=>Object.assign({},prev,{role:'wali'})),style:{padding:'10px 8px',borderRadius:'14px',fontSize:'12px',fontFamily:MONO,cursor:'pointer',border:'2px solid',display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',background:form.role==='wali'?'rgba(250,204,21,.15)':'transparent',color:form.role==='wali'?'#facc15':'var(--text-muted)',borderColor:form.role==='wali'?'#facc15':'var(--border)',transition:'all .2s',fontWeight:form.role==='wali'?'bold':'normal'}},
+              h('span',{style:{fontSize:'20px'}},'🏫'),
               'Wali Kelas',
               form.role==='wali'&&h('span',{style:{fontSize:'9px',opacity:.7}},'✓ Dipilih')
             ),
-            h('button',{onClick:()=>setForm(prev=>Object.assign({},prev,{role:'mapel'})),style:{padding:'16px 8px',borderRadius:'14px',fontSize:'12px',fontFamily:MONO,cursor:'pointer',border:'2px solid',display:'flex',flexDirection:'column',alignItems:'center',gap:'6px',background:form.role==='mapel'?'rgba(168,85,247,.15)':'transparent',color:form.role==='mapel'?'#a855f7':'var(--text-muted)',borderColor:form.role==='mapel'?'#a855f7':'var(--border)',transition:'all .2s',fontWeight:form.role==='mapel'?'bold':'normal'}},
-              h('span',{style:{fontSize:'24px'}},'📚'),
+            h('button',{onClick:()=>setForm(prev=>Object.assign({},prev,{role:'mapel'})),style:{padding:'10px 8px',borderRadius:'14px',fontSize:'12px',fontFamily:MONO,cursor:'pointer',border:'2px solid',display:'flex',flexDirection:'column',alignItems:'center',gap:'4px',background:form.role==='mapel'?'rgba(168,85,247,.15)':'transparent',color:form.role==='mapel'?'#a855f7':'var(--text-muted)',borderColor:form.role==='mapel'?'#a855f7':'var(--border)',transition:'all .2s',fontWeight:form.role==='mapel'?'bold':'normal'}},
+              h('span',{style:{fontSize:'20px'}},'📚'),
               'Guru Mapel',
               form.role==='mapel'&&h('span',{style:{fontSize:'9px',opacity:.7}},'✓ Dipilih')
             )
@@ -5252,10 +5295,10 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
         h('div',{style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'12px',marginBottom:'24px'}},
           [{l:'Hadir',v:hadir,c:'#00ff88'},{l:'Alpha',v:alpha,c:'#f87171'},{l:'Terlambat',v:terlambat,c:'#ff8800'}].map((s,i)=>h('div',{key:i,style:Object.assign({},gl,{borderRadius:'14px',padding:'16px',textAlign:'center',border:'1px solid var(--border)'})},h('p',{style:{fontFamily:ORB,fontSize:'26px',fontWeight:'bold',color:s.c}},s.v),h('p',{style:{color:'var(--text-muted)',fontSize:'9px',fontFamily:MONO,marginTop:'4px'}},s.l)))
         ),
-        page==='rekap'&&h(WaliRekap,{students,records,settings,kelas:teacher.kelas}),
-        page==='izin'&&h(WaliIzin,{leaves,students,onReload:reload,settings}),
-        page==='cbt'&&h(WaliCBT,{teacher,students,isDemo}),
-        page==='wa'&&h(AdminWA,{students,records,settings:settings||{},onReload:reload})
+        page==='rekap'&&h(WaliRekap,{onBack:()=>setPage('rekap'),students,records,settings,kelas:teacher.kelas}),
+        page==='izin'&&h(WaliIzin,{onBack:()=>setPage('rekap'),leaves,students,onReload:reload,settings}),
+        page==='cbt'&&h(WaliCBT,{onBack:()=>setPage('rekap'),teacher,students,isDemo}),
+        page==='wa'&&h(AdminWA,{onBack:()=>setPage('dashboard'),students,records,settings:settings||{},onReload:reload})
       )
     ),
     showTheme&&h(ThemePicker,{onClose:()=>setShowTheme(false)})
@@ -5299,7 +5342,7 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
   );
 }
 
-function WaliRekap({students, records, settings, kelas}) {
+function WaliRekap({students, records, settings, kelas,onBack}) {
   const [fDate, setFDate] = useState(todayStr());
   const myIds = new Set(students.map(s=>s.id));
   const dayRecs = records.filter(r => r.date === fDate && myIds.has(r.studentId));
@@ -5337,7 +5380,7 @@ function WaliRekap({students, records, settings, kelas}) {
   );
 }
 
-function WaliIzin({leaves, students, onReload, settings}) {
+function WaliIzin({leaves, students, onReload, settings,onBack}) {
   const pending = leaves.filter(l=>l.status==='pending');
   const done = leaves.filter(l=>l.status!=='pending');
 
@@ -5373,7 +5416,7 @@ function WaliIzin({leaves, students, onReload, settings}) {
   };
 
   return h('div',{style:{display:'flex',flexDirection:'column',gap:'14px'}},
-    h(SectionHeader,{title:'Izin Siswa',count:leaves.length,color1:'#fb923c'}),
+    h(SectionHeader,{title:'Izin Siswa',count:leaves.length,color1:'#fb923c',onBack}),
     pending.length>0&&h('div',null,
       h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'#facc15',letterSpacing:'0.2em',marginBottom:'10px'}},'MENUNGGU PERSETUJUAN ('+pending.length+')'),
       pending.map(LeaveCard)
@@ -5436,9 +5479,9 @@ function GuruMapelPanel({teacher, onLogout, isDemo=false}) {
     h('div',{className:'app-content'},
       h('main',null,
         isDemo&&h('div',{style:{margin:'0 0 20px',padding:'10px 14px',borderRadius:'12px',background:'rgba(250,204,21,.08)',border:'1px solid rgba(250,204,21,.25)',display:'flex',alignItems:'center',gap:'8px'}},h('span',null,'🎮'),h('div',null,h('p',{style:{color:'#facc15',fontSize:'10px',fontFamily:MONO,fontWeight:'bold'}},'MODE DEMO'),h('p',{style:{color:'rgba(250,204,21,.5)',fontSize:'9px',fontFamily:MONO}},'Data tidak tersimpan'))),
-        page==='absen'&&h(MapelAbsen,{teacher,students:allStudents,kelasList,settings,onReload:reload,isDemo}),
-        page==='rekap'&&h(MapelRekap,{teacher,students:allStudents,subjAtt,kelasList}),
-        page==='cbt'&&h(GuruCBT,{teacher,students:allStudents,isDemo})
+        page==='absen'&&h(MapelAbsen,{onBack:()=>setPage('rekap'),teacher,students:allStudents,kelasList,settings,onReload:reload,isDemo}),
+        page==='rekap'&&h(MapelRekap,{onBack:()=>setPage('rekap'),teacher,students:allStudents,subjAtt,kelasList}),
+        page==='cbt'&&h(GuruCBT,{onBack:()=>setPage('rekap'),teacher,students:allStudents,isDemo})
       )
     ),
     showTheme&&h(ThemePicker,{onClose:()=>setShowTheme(false)})
@@ -5470,7 +5513,7 @@ function GuruMapelPanel({teacher, onLogout, isDemo=false}) {
   );
 }
 
-function MapelAbsen({teacher, students, kelasList, settings, onReload, isDemo=false}) {
+function MapelAbsen({teacher, students, kelasList, settings, onReload, isDemo=false,onBack}) {
   const [kelas, setKelas] = useState(kelasList[0]||'');
   const [jam, setJam] = useState('1');
   const [date, setDate] = useState(todayStr());
@@ -5511,7 +5554,7 @@ function MapelAbsen({teacher, students, kelasList, settings, onReload, isDemo=fa
   const summary = STATUS.map(st=>({st,n:kelasStudents.filter(s=>(attMap[s.id]||'Hadir')===st).length}));
 
   return h('div',{style:{display:'flex',flexDirection:'column',gap:'14px'}},
-    h(SectionHeader,{title:'Absen ' + teacher.mapel, color1:'#a855f7'}),
+    h(SectionHeader,{title:'Absen ' + teacher.mapel, color1:'#a855f7',onBack}),
 
     // Filter
     h('div',{style:Object.assign({},gl,{borderRadius:'14px',padding:'16px',border:'1px solid rgba(168,85,247,.15)',display:'flex',flexDirection:'column',gap:'12px'})},
@@ -5580,12 +5623,12 @@ function MapelAbsen({teacher, students, kelasList, settings, onReload, isDemo=fa
   );
 }
 
-function MapelRekap({teacher, students, subjAtt, kelasList}) {
+function MapelRekap({teacher, students, subjAtt, kelasList,onBack}) {
   const [filterKelas, setFilterKelas] = useState(kelasList[0]||'');
   const filtered = subjAtt.filter(a=>!filterKelas||a.kelas===filterKelas);
 
   return h('div',{style:{display:'flex',flexDirection:'column',gap:'14px'}},
-    h(SectionHeader,{title:'Rekap '+teacher.mapel,color1:'#a855f7'}),
+    h(SectionHeader,{title:'Rekap '+teacher.mapel,color1:'#a855f7',onBack}),
 
     // Filter kelas
     h('div',{style:{display:'flex',gap:'6px',flexWrap:'wrap'}},
