@@ -1,17 +1,14 @@
-// AbsensiKu Service Worker v6
-// Strategi: Network First untuk HTML, Cache First hanya untuk CBT soal & media
-
-const CACHE_NAME = 'absensiKu-v6';
+// AbsensiKu Service Worker v7
+// Auto-update: SW baru langsung aktif dan reload semua client
+const CACHE_NAME = 'absensiKu-v7';
 const CBT_CACHE  = 'absensiKu-cbt-v2';
 
-// ── Install — langsung skipWaiting, TIDAK pre-cache HTML
+// ── Install — skipWaiting langsung agar SW baru aktif segera
 self.addEventListener('install', e => {
   e.waitUntil(self.skipWaiting());
 });
 
-// ── Activate — hapus cache lama, klaim client
-// PENTING: clients.claim() tidak menyebabkan reload halaman —
-// hanya mengambil kontrol tab yang belum dikontrol SW
+// ── Activate — hapus cache lama, klaim semua client, lalu kirim reload signal
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
@@ -20,18 +17,24 @@ self.addEventListener('activate', e => {
         .map(k => caches.delete(k))
       )
     ).then(() => self.clients.claim())
+     .then(() => {
+       return self.clients.matchAll({type:'window', includeUncontrolled:true})
+         .then(clients => {
+           clients.forEach(client => {
+             client.postMessage({type:'SW_UPDATED'});
+           });
+         });
+     })
   );
 });
 
-// ── Fetch — strategi cache ─────────────────────────────────────────
+// ── Fetch
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
-
   const url = new URL(e.request.url);
 
-  // 1. Supabase API soal CBT → Cache First + background update
-  if (url.hostname.includes('supabase.co') &&
-      url.pathname.includes('cbt_questions')) {
+  // 1. Soal CBT → Cache First + background update
+  if (url.hostname.includes('supabase.co') && url.pathname.includes('cbt_questions')) {
     e.respondWith(
       caches.open(CBT_CACHE).then(async cache => {
         const cached = await cache.match(e.request);
@@ -47,7 +50,7 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // 2. Supabase Storage media CBT → Cache First
+  // 2. Media CBT → Cache First
   if (url.pathname.includes('/storage/v1/object/public/cbt-media/')) {
     e.respondWith(
       caches.open(CBT_CACHE).then(async cache => {
@@ -61,34 +64,32 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // 3. Semua request lain → Network First (tidak di-cache)
+  // 3. HTML → Network First, no-store (selalu ambil terbaru)
+  if (url.pathname.endsWith('.html') || url.pathname === '/' || url.pathname.endsWith('/')) {
+    e.respondWith(
+      fetch(e.request, {cache:'no-store'}).catch(() => caches.match(e.request))
+    );
+    return;
+  }
+
+  // 4. Lainnya → Network First
   e.respondWith(
     fetch(e.request).catch(() => caches.match(e.request))
   );
 });
 
-// ── Message handler ────────────────────────────────────────────────
+// ── Message
 self.addEventListener('message', e => {
   if (!e.data) return;
-
-  // Hapus HANYA cache CBT soal — tidak reload, tidak claim ulang
   if (e.data === 'CLEAR_CBT_CACHE') {
     caches.open(CBT_CACHE).then(cache => {
-      return cache.keys().then(keys =>
-        Promise.all(keys.map(k => cache.delete(k)))
-      );
+      return cache.keys().then(keys => Promise.all(keys.map(k => cache.delete(k))));
     }).then(() => {
-      // Broadcast ke semua client agar hapus sessionStorage cbt_q_ juga
       self.clients.matchAll().then(clients => {
-        clients.forEach(client =>
-          client.postMessage({type:'CBT_CACHE_CLEARED'})
-        );
+        clients.forEach(c => c.postMessage({type:'CBT_CACHE_CLEARED'}));
       });
     });
     return;
   }
-
-  if (e.data && e.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
