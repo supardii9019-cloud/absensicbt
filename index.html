@@ -260,6 +260,7 @@ const {useState,useEffect,useRef,useCallback,createElement:h,Fragment} = React;
 // ================================================================
 const SUPABASE_URL = 'https://dgmimpupenzrtbylkopn.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnbWltcHVwZW56cnRieWxrb3BuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzI5OTQ3NzYsImV4cCI6MjA4ODU3MDc3Nn0.9ahU05h08RLYbQ6KqlfMXVLD-xjlPla4n9rW_0FVe58';
+window._sbKey = SUPABASE_ANON_KEY;
 // ================================================================
 
 const sb = {
@@ -4504,17 +4505,11 @@ function CbtExamCard({exam,student,isDemo,onStart}) {
         )
       ),
       checking?h('div',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-muted)'}},'...'):
-      status==='disqualified'?
+      (status==='disqualified'||status==='force_exited')?
         h('div',{style:{textAlign:'center'}},
           h('p',{style:{fontSize:'22px',marginBottom:'2px'}},'🚫'),
           h('p',{style:{fontFamily:ORB,fontSize:'9px',color:'#f87171',letterSpacing:'.1em'}},'DISKUALIFIKASI'),
           h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'rgba(248,113,113,.6)',marginTop:'2px'}},'Hubungi guru/admin')
-        ):
-      status==='force_exited'?
-        h('div',{style:{textAlign:'center'}},
-          h('p',{style:{fontSize:'22px',marginBottom:'2px'}},'⛔'),
-          h('p',{style:{fontFamily:ORB,fontSize:'9px',color:'#fb923c',letterSpacing:'.1em'}},'KELUAR PAKSA'),
-          h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'rgba(251,146,60,.6)',marginTop:'2px'}},'Hubungi guru/admin')
         ):
       status==='submitted'?
         h('div',{style:{textAlign:'center'}},
@@ -4961,12 +4956,23 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     };
     beat();
     const iv=setInterval(beat,20000);
-    // Saat keluar paksa: langsung submit ujian dengan jawaban seadanya
+    // Saat keluar paksa: DISKUALIFIKASI langsung
     const markExited=()=>{
-      if(sessionRef.current) sessionRef.current._appClosing=true; // stop all violations
+      if(sessionRef.current) sessionRef.current._appClosing=true;
       if(sessionRef.current&&!sessionRef.current._submitted){
-        // Panggil handleSubmit(auto=true) agar skor dihitung & status='submitted'
-        handleSubmit(true,false);
+        sessionRef.current._submitted=true;
+        const ses=sessionRef.current;
+        const patchUrl='https://dgmimpupenzrtbylkopn.supabase.co/rest/v1/cbt_sessions?id=eq.'+ses.id;
+        const patchBody=JSON.stringify({status:'disqualified',exited_at:new Date().toISOString()});
+        const hdrs={'Content-Type':'application/json','apikey':window._sbKey,'Authorization':'Bearer '+window._sbKey};
+        // sendBeacon lebih reliable saat pagehide
+        const beaconSent=navigator.sendBeacon&&navigator.sendBeacon(
+          patchUrl,
+          new Blob([patchBody],{type:'application/json'})
+        );
+        if(!beaconSent){
+          fetch(patchUrl,{method:'PATCH',headers:hdrs,body:patchBody,keepalive:true}).catch(()=>{});
+        }
       }
     };
     window.addEventListener('pagehide',markExited);
@@ -6470,10 +6476,12 @@ if('serviceWorker' in navigator){
           var newSW = r.installing;
           if(newSW){
             newSW.addEventListener('statechange', function(){
-              // JANGAN reload halaman — biarkan SW baru aktif di kunjungan berikutnya
-              // reload paksa akan menghapus session login di memory
               if(newSW.state === 'installed' && navigator.serviceWorker.controller){
-                console.log('[AbsensiKu] SW baru siap, akan aktif di kunjungan berikutnya');
+                // SW baru siap → paksa skipWaiting lalu reload
+                newSW.postMessage({type:'SKIP_WAITING'});
+              }
+              if(newSW.state === 'activated'){
+                window.location.reload();
               }
             });
           }
@@ -6572,7 +6580,9 @@ function showInstallModal(){
 </script>
 
 <script>
-  navigator.serviceWorker.addEventListener('message',function(event){if(event.data&&event.data.type==='CBT_CACHE_CLEARED'){var keys=Object.keys(sessionStorage);keys.forEach(function(k){if(k.startsWith('cbt_q_'))sessionStorage.removeItem(k);});}});
+navigator.serviceWorker.addEventListener('message',function(event){
+  if(event.data&&event.data.type==='SW_UPDATED'){window.location.reload();return;}
+  if(event.data&&event.data.type==='CBT_CACHE_CLEARED'){
 </script>
 
 </body>
