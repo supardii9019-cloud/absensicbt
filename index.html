@@ -570,7 +570,11 @@ const DB = {
       student_name:s.student_name, student_code:s.student_code, kelas:s.kelas,
       start_time:s.start_time, end_time:s.end_time||null,
       answers:s.answers||{}, photos:s.photos||[], violations:s.violations||[],
-      score:s.score||null, score_max:s.score_max||null, status:s.status||'ongoing', device_id:s.device_id||null
+      score:s.score||null, score_max:s.score_max||null, status:s.status||'ongoing',
+      device_id:s.device_id||null,
+      force_exited:s.force_exited||false,
+      exited_at:s.exited_at||null,
+      last_seen:s.last_seen||null
     });
   },
 };
@@ -4329,7 +4333,16 @@ function CbtExamCard({exam,student,isDemo,onStart}) {
           h('p',{style:{fontFamily:ORB,fontSize:'9px',color:'#f87171',letterSpacing:'.1em'}},'DISKUALIFIKASI'),
           h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'rgba(248,113,113,.6)',marginTop:'2px'}},'Hubungi guru/admin')
         ):
-      session&&session.force_exited&&status!=='submitted'?
+      (()=>{
+        if(!session||status==='submitted'||status==='disqualified') return false;
+        if(session.force_exited) return true;
+        // Heartbeat check: last_seen > 45 detik lalu = siswa keluar paksa
+        if(session.last_seen){
+          const diff=(Date.now()-new Date(session.last_seen).getTime())/1000;
+          if(diff>45) return true;
+        }
+        return false;
+      })()?
         h('div',{style:{textAlign:'center'}},
           h('p',{style:{fontSize:'22px',marginBottom:'2px'}},'⛔'),
           h('p',{style:{fontFamily:ORB,fontSize:'9px',color:'#fb923c',letterSpacing:'.1em'}},'KELUAR PAKSA'),
@@ -4671,18 +4684,33 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     };
   },[submitted,loading,isDemo,tokenPassed,addViolation]);
 
-  // ── PWA/tab force-exit: tandai sesi saat siswa keluar paksa ───────
+  // ── Heartbeat: update last_seen tiap 15 detik ────────────────────
+  // Metode ini lebih andal dari pagehide/beforeunload di PWA mobile.
+  // Jika last_seen > 45 detik lalu, CbtExamCard anggap sesi ditinggalkan.
   useEffect(()=>{
     if(isDemo||submitted||loading||!tokenPassed) return;
+    const beat=()=>{
+      if(sessionRef.current&&!sessionRef.current._submitted){
+        const ts=new Date().toISOString();
+        sessionRef.current={...sessionRef.current,last_seen:ts};
+        DB.saveCbtSession({...sessionRef.current,last_seen:ts}).catch(()=>{});
+      }
+    };
+    beat(); // langsung saat mulai
+    const iv=setInterval(beat,15000);
+    // pagehide sebagai backup (tidak andal di semua PWA)
     const markExited=()=>{
       if(sessionRef.current&&!sessionRef.current._submitted){
         DB.saveCbtSession({...sessionRef.current,force_exited:true,exited_at:new Date().toISOString()}).catch(()=>{});
       }
     };
-    // pagehide lebih andal di PWA & mobile daripada beforeunload
     window.addEventListener('pagehide',markExited);
     window.addEventListener('beforeunload',markExited);
-    return()=>{window.removeEventListener('pagehide',markExited);window.removeEventListener('beforeunload',markExited);};
+    return()=>{
+      clearInterval(iv);
+      window.removeEventListener('pagehide',markExited);
+      window.removeEventListener('beforeunload',markExited);
+    };
   },[isDemo,submitted,loading,tokenPassed]);
 
   // ── Token gate ───────────────────────────────────────────────────
@@ -4958,7 +4986,7 @@ function WaliCBT({teacher, students, isDemo,onBack}) {
                   :s.force_exited&&s.status!=='submitted'
                   ?h('div',null,
                       h('p',{style:{fontFamily:ORB,fontSize:'11px',color:'#fb923c'}},'⛔ K. PAKSA'),
-                      h('button',{onClick:async e=>{e.stopPropagation();if(confirm('Izinkan '+s.student_name+' lanjut ujian?')){await DB.saveCbtSession({...s,force_exited:false,exited_at:null});const s2=await DB.getCbtSessions(selExam);setSessions(s2.filter(ss=>ss.kelas===teacher.kelas));}},
+                      h('button',{onClick:async e=>{e.stopPropagation();if(confirm('Izinkan '+s.student_name+' lanjut ujian?')){await DB.saveCbtSession({...s,force_exited:false,exited_at:null,last_seen:new Date().toISOString()});const s2=await DB.getCbtSessions(selExam);setSessions(s2.filter(ss=>ss.kelas===teacher.kelas));}},
                         style:{marginTop:'4px',padding:'3px 8px',borderRadius:'6px',fontSize:'8px',fontFamily:MONO,color:'#facc15',background:'rgba(250,204,21,.1)',border:'1px solid rgba(250,204,21,.3)',cursor:'pointer'}},'🔄 Izinkan')
                     )
                   :pct!=null?h('p',{style:{fontFamily:ORB,fontSize:'20px',fontWeight:'bold',color:scoreColor(pct)}},pct):h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-muted)'}},s.status==='ongoing'?'⏳ Sedang':'Essay'),
