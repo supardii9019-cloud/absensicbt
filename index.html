@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>AbsensiKu — Sistem Absensi Siswa Digital</title>
 
 <!-- Force no-cache agar GitHub Pages selalu serve versi terbaru -->
@@ -66,6 +66,97 @@ input[type=date],select{color-scheme:light dark}
   --nav-bg:rgba(15,15,26,.95);
   --header-bg:rgba(15,15,26,.9);
   --particle-color:#00f0ff;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════
+   RESPONSIVE — SEMUA BREAKPOINT
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Fluid font & prevent overflow ───────────────────────────── */
+html { font-size: clamp(13px, 2vw, 16px); }
+body, #root { overflow-x: hidden !important; max-width: 100vw; }
+
+/* ── Safe area (notch/punch-hole iPhone & Android) ───────────── */
+@supports (padding: max(0px)) {
+  .mobile-header-wrap {
+    padding-top: env(safe-area-inset-top) !important;
+  }
+  .mobile-nav-wrap {
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+}
+
+/* ── Mobile utama: max-width fluid & padding adaptif ─────────── */
+.mobile-content-main {
+  max-width: 100% !important;
+  padding: 16px 14px 100px !important;
+  box-sizing: border-box !important;
+}
+.mobile-header-inner {
+  max-width: 100% !important;
+  padding: 10px 14px !important;
+}
+
+/* ── Tablet portrait (480–767px): lebih lega ─────────────────── */
+@media (min-width: 480px) and (max-width: 767px) {
+  .mobile-content-main { padding: 20px 20px 100px !important; }
+  .mobile-header-inner { padding: 12px 20px !important; }
+}
+
+/* ── PC/Tablet landscape sidebar adaptif ────────────────────── */
+@media (min-width: 768px) and (max-width: 1024px) {
+  :root { --sidebar-w: 190px; }
+  .app-sidebar  { width: 190px !important; }
+  .app-content  { margin-left: 190px !important; width: calc(100% - 190px) !important; }
+  .app-content main { max-width: 760px !important; padding: 22px 22px 40px !important; }
+  .sb-item { font-size: 10px !important; padding: 8px 10px !important; }
+}
+@media (min-width: 1025px) and (max-width: 1280px) {
+  .app-content main { max-width: 900px !important; padding: 26px 32px 44px !important; }
+}
+@media (min-width: 1281px) {
+  .app-content main { max-width: 1100px !important; padding: 28px 48px 48px !important; }
+}
+
+/* ── HP kecil (< 360px): kompres lebih jauh ─────────────────── */
+@media (max-width: 359px) {
+  .mobile-content-main { padding: 12px 10px 90px !important; }
+  .mobile-header-inner { padding: 8px 10px !important; }
+  input, textarea, select { font-size: 14px !important; }
+}
+
+/* ── Landscape mobile: kurangi padding vertikal ──────────────── */
+@media (max-height: 500px) and (orientation: landscape) {
+  .mobile-content-main { padding-top: 6px !important; padding-bottom: 64px !important; }
+}
+
+/* ── Semua tombol & input: touch-friendly ────────────────────── */
+@media (max-width: 767px) {
+  button { min-height: 36px; }
+  nav button, .nav-btn { min-height: 48px !important; }
+  input, select, textarea { border-radius: 10px !important; }
+}
+
+/* ── Card & grid: satu kolom di HP, dua di tablet ───────────── */
+.resp-grid {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+@media (min-width: 500px) {
+  .resp-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+@media (min-width: 900px) {
+  .resp-grid { grid-template-columns: repeat(3, 1fr) !important; }
+}
+
+/* ── Tabel overflow scroll di HP ────────────────────────────── */
+.resp-scroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
+
+/* ── Login box: full width di HP sangat kecil ───────────────── */
+@media (max-width: 400px) {
+  .afiu[style*="maxWidth"] { max-width: 100% !important; }
 }
 
 /* ─── RESPONSIVE PC LAYOUT ─────────────────────── */
@@ -1360,7 +1451,7 @@ function NavBar({items,active,onSelect}) {
   const allIds = moreItem ? moreItem.children.map(c=>c.id) : [];
   const inMore = allIds.includes(active);
 
-  return h('nav',{style:Object.assign({},glS,{position:'fixed',bottom:0,left:0,right:0,zIndex:30,borderTop:'1px solid var(--border)'})},
+  return h('nav',{className:'mobile-nav-wrap',style:Object.assign({},glS,{position:'fixed',bottom:0,left:0,right:0,zIndex:30,borderTop:'1px solid var(--border)'})},
     showMore&&moreItem&&h('div',{onClick:()=>setShowMore(false),style:{position:'fixed',inset:0,zIndex:28,background:'rgba(0,0,0,.5)',backdropFilter:'blur(4px)'}},
       h('div',{onClick:e=>e.stopPropagation(),style:{position:'absolute',bottom:'64px',left:'50%',transform:'translateX(-50%)',width:'min(340px,calc(100% - 32px))',background:'var(--bg-panel-s)',border:'1px solid var(--accent-dim)',borderRadius:'20px',padding:'16px',boxShadow:'0 -8px 40px rgba(0,0,0,.6)'}},
         h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--accent-dim)',letterSpacing:'0.2em',marginBottom:'12px',textAlign:'center'}},'MENU LAINNYA'),
@@ -4234,9 +4325,15 @@ function CbtExamCard({exam,student,isDemo,onStart}) {
       checking?h('div',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-muted)'}},'...'):
       status==='disqualified'?
         h('div',{style:{textAlign:'center'}},
-          h('p',{style:{fontSize:'24px',marginBottom:'4px'}},'🚫'),
-          h('p',{style:{fontFamily:ORB,fontSize:'9px',color:'#f87171',letterSpacing:'.1em'}},'DIDISKUALIFIKASI'),
+          h('p',{style:{fontSize:'22px',marginBottom:'2px'}},'🚫'),
+          h('p',{style:{fontFamily:ORB,fontSize:'9px',color:'#f87171',letterSpacing:'.1em'}},'DISKUALIFIKASI'),
           h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'rgba(248,113,113,.6)',marginTop:'2px'}},'Hubungi guru/admin')
+        ):
+      session&&session.force_exited&&status!=='submitted'?
+        h('div',{style:{textAlign:'center'}},
+          h('p',{style:{fontSize:'22px',marginBottom:'2px'}},'⛔'),
+          h('p',{style:{fontFamily:ORB,fontSize:'9px',color:'#fb923c',letterSpacing:'.1em'}},'KELUAR PAKSA'),
+          h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'rgba(251,146,60,.6)',marginTop:'2px'}},'Hubungi guru/admin')
         ):
       status==='submitted'?
         h('div',{style:{textAlign:'center'}},
@@ -4485,6 +4582,11 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     };
   },[submitted,loading,tokenPassed]);
 
+  // tab switch ditangani di useEffect anti-nyontek lengkap di bawah
+
+  // ── Anti-nyontek: paksa fullscreen ───────────────────────────────
+  // [anti-cheat effects: dipindah setelah addViolation — lihat di bawah]
+
   // ── Jawab soal ────────────────────────────────────────────────────
   const answer=useCallback((qId,val)=>{
     setAnswers(prev=>{
@@ -4500,38 +4602,29 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     setSubmitted(true);
     if(document.exitFullscreen&&document.fullscreenElement) document.exitFullscreen().catch(()=>{});
     const _cs=camStreamRef.current||camStream;if(_cs)_cs.getTracks().forEach(t=>t.stop());camStreamRef.current=null;
-
     if(!isDemo&&sessionRef.current){
       let total=0,maxScore=0;
       const finalAns=sessionRef.current.answers||answers;
       const finalQs=sessionRef.current._questions||questions;
       finalQs.forEach(q=>{
         maxScore+=q.score||1;
-        if(q.type==='pg'||q.type==='tf'){
-          if(finalAns[q.id]===q.correct_answer) total+=q.score||1;
-        } else if(q.type==='mcma'){
+        if(q.type==='pg'||q.type==='tf'){if(finalAns[q.id]===q.correct_answer)total+=q.score||1;}
+        else if(q.type==='mcma'){
           const corrArr=Array.isArray(q.correct_answer)?q.correct_answer:[];
           const stuArr=Array.isArray(finalAns[q.id])?finalAns[q.id]:[];
-          if(corrArr.length>0){
-            const perItem=(q.score||1)/corrArr.length;
-            let pts=0;
-            corrArr.forEach(c=>{if(stuArr.includes(c))pts+=perItem;});
-            stuArr.forEach(s=>{if(!corrArr.includes(s))pts-=perItem;});
-            total+=Math.max(0,Math.round(pts*10)/10);
-          }
+          if(corrArr.length>0){const perItem=(q.score||1)/corrArr.length;let pts=0;corrArr.forEach(c=>{if(stuArr.includes(c))pts+=perItem;});stuArr.forEach(s=>{if(!corrArr.includes(s))pts-=perItem;});total+=Math.max(0,Math.round(pts*10)/10);}
         }
       });
       const hasEssay=finalQs.some(q=>q.type==='essay');
       const score=maxScore>0&&!hasEssay?Math.round(total*10)/10:null;
       const scoreMax=maxScore>0&&!hasEssay?maxScore:null;
-      // Status 'disqualified' jika dikeluarkan karena nyontek, 'submitted' jika normal
-      const finalStatus=disqualified?'disqualified':'submitted';
-      await queueSubmit({...sessionRef.current,end_time:new Date().toISOString(),status:finalStatus,score,score_max:scoreMax,answers:finalAns});
+      await queueSubmit({...sessionRef.current,end_time:new Date().toISOString(),status:disqualified?'disqualified':'submitted',score,score_max:scoreMax,answers:finalAns});
     }
+    if(sessionRef.current) sessionRef.current._submitted=true;
     if(auto) setTimeout(()=>onFinish(),2500);
   },[submitted,camStream,isDemo,onFinish]);
 
-  // ── Anti-nyontek: MAX_VIOLATIONS & addViolation ───────────────────
+  // ── addViolation: catat + auto-submit saat max pelanggaran ────────
   const MAX_VIOLATIONS=3;
   const addViolation=useCallback((type)=>{
     if(submitted) return;
@@ -4539,31 +4632,22 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     setViolations(p=>{
       const nv=[...p,v];
       if(sessionRef.current&&!isDemo) DB.saveCbtSession({...sessionRef.current,violations:nv}).catch(()=>{});
-      if(nv.length>=MAX_VIOLATIONS){
-        setShowWarning('🚫 Terlalu banyak pelanggaran! Ujian dihentikan paksa.');
-        setTimeout(()=>handleSubmit(true,true),1500);
-      }
+      if(nv.length>=MAX_VIOLATIONS){setShowWarning('🚫 Terlalu banyak pelanggaran! Ujian dihentikan paksa.');setTimeout(()=>handleSubmit(true,true),1500);}
       return nv;
     });
   },[submitted,isDemo,handleSubmit]);
 
-  // ── Anti-nyontek: paksa fullscreen ───────────────────────────────
+  // ── Anti-nyontek: paksa fullscreen (setelah addViolation) ─────────
   useEffect(()=>{
     if(submitted||loading||!tokenPassed) return;
     const tryFS=()=>{if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});};
     tryFS();
-    const onFsChange=()=>{
-      if(!document.fullscreenElement){
-        addViolation('Keluar dari fullscreen');
-        setShowWarning('⚠️ Keluar fullscreen terdeteksi! Kembali ke fullscreen...');
-        setTimeout(()=>{tryFS();setShowWarning(null);},2000);
-      }
-    };
+    const onFsChange=()=>{if(!document.fullscreenElement){addViolation('Keluar dari fullscreen');setShowWarning('⚠️ Keluar fullscreen! Kembali...');setTimeout(()=>{tryFS();setShowWarning(null);},2000);}};
     document.addEventListener('fullscreenchange',onFsChange);
     return()=>{document.removeEventListener('fullscreenchange',onFsChange);if(document.exitFullscreen&&document.fullscreenElement)document.exitFullscreen().catch(()=>{});};
   },[submitted,loading,isDemo,tokenPassed,addViolation]);
 
-  // ── Anti-nyontek: blokir copy/paste/rightclick/keyboard/devtools/blur/tab ──
+  // ── Anti-nyontek: copy/paste/shortcut/devtools/blur/tab ───────────
   useEffect(()=>{
     if(submitted||loading||!tokenPassed) return;
     const noCtx=e=>{e.preventDefault();setShowWarning('⚠️ Klik kanan dinonaktifkan!');setTimeout(()=>setShowWarning(null),2000);return false;};
@@ -4574,24 +4658,32 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     };
     const noSel=e=>{e.preventDefault();return false;};
     const noDrag=e=>{e.preventDefault();return false;};
-    const onVis=()=>{if(document.hidden){addViolation('Pindah tab / keluar halaman');setShowWarning('⚠️ Terdeteksi keluar dari halaman ujian!');setTimeout(()=>setShowWarning(null),3000);}};
-    const onBlur=()=>{addViolation('Pindah aplikasi (window blur)');setShowWarning('⚠️ Terdeteksi keluar dari aplikasi!');setTimeout(()=>setShowWarning(null),3000);};
+    const onVis=()=>{if(document.hidden){addViolation('Pindah tab');setShowWarning('⚠️ Terdeteksi keluar dari halaman ujian!');setTimeout(()=>setShowWarning(null),3000);}};
+    const onBlur=()=>{addViolation('Pindah aplikasi');setShowWarning('⚠️ Terdeteksi keluar dari aplikasi!');setTimeout(()=>setShowWarning(null),3000);};
     const devCheck=setInterval(()=>{if(window.outerWidth-window.innerWidth>160||window.outerHeight-window.innerHeight>160){addViolation('DevTools terbuka');setShowWarning('⚠️ Developer Tools terdeteksi!');setTimeout(()=>setShowWarning(null),3000);}},2000);
-    document.addEventListener('contextmenu',noCtx);
-    document.addEventListener('copy',noCopy);
-    document.addEventListener('cut',noCopy);
-    document.addEventListener('paste',noCopy);
-    document.addEventListener('keydown',noKey);
-    document.addEventListener('selectstart',noSel);
-    document.addEventListener('dragstart',noDrag);
-    document.addEventListener('visibilitychange',onVis);
-    window.addEventListener('blur',onBlur);
+    document.addEventListener('contextmenu',noCtx);document.addEventListener('copy',noCopy);document.addEventListener('cut',noCopy);document.addEventListener('paste',noCopy);
+    document.addEventListener('keydown',noKey);document.addEventListener('selectstart',noSel);document.addEventListener('dragstart',noDrag);
+    document.addEventListener('visibilitychange',onVis);window.addEventListener('blur',onBlur);
     return()=>{
       document.removeEventListener('contextmenu',noCtx);document.removeEventListener('copy',noCopy);document.removeEventListener('cut',noCopy);document.removeEventListener('paste',noCopy);
       document.removeEventListener('keydown',noKey);document.removeEventListener('selectstart',noSel);document.removeEventListener('dragstart',noDrag);
       document.removeEventListener('visibilitychange',onVis);window.removeEventListener('blur',onBlur);clearInterval(devCheck);
     };
   },[submitted,loading,isDemo,tokenPassed,addViolation]);
+
+  // ── PWA/tab force-exit: tandai sesi saat siswa keluar paksa ───────
+  useEffect(()=>{
+    if(isDemo||submitted||loading||!tokenPassed) return;
+    const markExited=()=>{
+      if(sessionRef.current&&!sessionRef.current._submitted){
+        DB.saveCbtSession({...sessionRef.current,force_exited:true,exited_at:new Date().toISOString()}).catch(()=>{});
+      }
+    };
+    // pagehide lebih andal di PWA & mobile daripada beforeunload
+    window.addEventListener('pagehide',markExited);
+    window.addEventListener('beforeunload',markExited);
+    return()=>{window.removeEventListener('pagehide',markExited);window.removeEventListener('beforeunload',markExited);};
+  },[isDemo,submitted,loading,tokenPassed]);
 
   // ── Token gate ───────────────────────────────────────────────────
   if(!tokenPassed) return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}},
@@ -4667,13 +4759,8 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   const answered=Object.keys(answers).filter(k=>{const v=answers[k];return Array.isArray(v)?v.length>0:!!v;}).length;
 
   return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',color:'var(--text-primary)',display:'flex',flexDirection:'column'}},
-    // Peringatan + sisa pelanggaran
-    showWarning&&h('div',{style:{position:'fixed',top:'70px',left:'50%',transform:'translateX(-50%)',zIndex:1000,background:'rgba(239,68,68,.15)',border:'1px solid rgba(239,68,68,.4)',borderRadius:'12px',padding:'12px 20px',fontFamily:MONO,fontSize:'11px',color:'#f87171',backdropFilter:'blur(8px)',whiteSpace:'nowrap',textAlign:'center'}},
-      h('div',null,showWarning),
-      violations.length>0&&h('div',{style:{fontSize:'9px',marginTop:'4px',color:'rgba(248,113,113,.7)'}},
-        '⚠️ Pelanggaran: '+violations.length+'/'+MAX_VIOLATIONS+' — ke-'+MAX_VIOLATIONS+' ujian dihentikan paksa!'
-      )
-    ),
+    // Peringatan
+    showWarning&&h('div',{style:{position:'fixed',top:'70px',left:'50%',transform:'translateX(-50%)',zIndex:1000,background:'rgba(239,68,68,.15)',border:'1px solid rgba(239,68,68,.4)',borderRadius:'12px',padding:'12px 20px',fontFamily:MONO,fontSize:'11px',color:'#f87171',backdropFilter:'blur(8px)',whiteSpace:'nowrap'}},showWarning),
 
     // Header
     h('div',{style:{position:'sticky',top:0,zIndex:50,background:'var(--header-bg)',backdropFilter:'blur(20px)',borderBottom:'1px solid var(--border)',padding:'10px 16px',display:'flex',alignItems:'center',justifyContent:'space-between',gap:'12px'}},
@@ -4865,8 +4952,14 @@ function WaliCBT({teacher, students, isDemo,onBack}) {
                 s.status==='disqualified'
                   ?h('div',null,
                       h('p',{style:{fontFamily:ORB,fontSize:'11px',color:'#f87171'}},'🚫 DISKUAL.'),
-                      h('button',{onClick:async e=>{e.stopPropagation();if(confirm('Reset akses ujian '+s.student_name+'?')){await DB.saveCbtSession({...s,status:'ongoing',violations:[]});const s2=await DB.getCbtSessions(selExam);setSessions(s2.filter(ss=>ss.kelas===teacher.kelas));}},
+                      h('button',{onClick:async e=>{e.stopPropagation();if(confirm('Reset akses ujian '+s.student_name+'?')){await DB.saveCbtSession({...s,status:'ongoing',violations:[],force_exited:false});const s2=await DB.getCbtSessions(selExam);setSessions(s2.filter(ss=>ss.kelas===teacher.kelas));}},
                         style:{marginTop:'4px',padding:'3px 8px',borderRadius:'6px',fontSize:'8px',fontFamily:MONO,color:'#facc15',background:'rgba(250,204,21,.1)',border:'1px solid rgba(250,204,21,.3)',cursor:'pointer'}},'🔄 Reset')
+                    )
+                  :s.force_exited&&s.status!=='submitted'
+                  ?h('div',null,
+                      h('p',{style:{fontFamily:ORB,fontSize:'11px',color:'#fb923c'}},'⛔ K. PAKSA'),
+                      h('button',{onClick:async e=>{e.stopPropagation();if(confirm('Izinkan '+s.student_name+' lanjut ujian?')){await DB.saveCbtSession({...s,force_exited:false,exited_at:null});const s2=await DB.getCbtSessions(selExam);setSessions(s2.filter(ss=>ss.kelas===teacher.kelas));}},
+                        style:{marginTop:'4px',padding:'3px 8px',borderRadius:'6px',fontSize:'8px',fontFamily:MONO,color:'#facc15',background:'rgba(250,204,21,.1)',border:'1px solid rgba(250,204,21,.3)',cursor:'pointer'}},'🔄 Izinkan')
                     )
                   :pct!=null?h('p',{style:{fontFamily:ORB,fontSize:'20px',fontWeight:'bold',color:scoreColor(pct)}},pct):h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-muted)'}},s.status==='ongoing'?'⏳ Sedang':'Essay'),
                 s.status!=='disqualified'&&h('p',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--text-dim)'}},s.status==='submitted'?'Selesai':s.status)
@@ -5233,8 +5326,8 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
   return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',color:'var(--text-primary)',position:'relative'}},
     h(ParticleBg),
     isDemo&&h('div',{style:{position:'fixed',top:0,left:0,right:0,zIndex:100,background:'rgba(250,204,21,.12)',borderBottom:'1px solid rgba(250,204,21,.3)',padding:'4px',textAlign:'center'}},h('p',{style:{color:'#facc15',fontSize:'9px',fontFamily:MONO,letterSpacing:'.15em'}},'🎮 MODE DEMO — data tidak tersimpan ke database')),
-    h('header',{style:Object.assign({},glS,{position:'sticky',top:isDemo?'28px':0,zIndex:30,borderBottom:'1px solid var(--border)'})},
-      h('div',{style:{maxWidth:'512px',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
+    h('header',{className:'mobile-header-wrap',style:Object.assign({},glS,{position:'sticky',top:isDemo?'28px':0,zIndex:30,borderBottom:'1px solid var(--border)'})},
+      h('div',{className:'mobile-header-inner',style:{maxWidth:'100%',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
         h('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},
           h('div',{style:{width:'32px',height:'32px',borderRadius:'8px',background:'var(--accent-bg)',border:'1px solid rgba(0,240,255,.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px'}},'\uD83D\uDEE1\uFE0F'),
           h('div',null,h('h1',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:'var(--text-primary)',letterSpacing:'0.1em'}},'ABSENSI',h('span',{style:{color:'#a855f7'}},'KU')),h('p',{style:{fontSize:'8px',fontFamily:MONO,color:isSuperAdmin?'rgba(0,240,255,.6)':'rgba(168,85,247,.6)',letterSpacing:'0.3em'}},isSuperAdmin?'\uD83D\uDEE1\uFE0F SUPERADMIN':'\uD83D\uDC64 ADMIN'+(adminData?' — '+adminData.name:'')))
@@ -5246,7 +5339,7 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
         )
       )
     ),
-    h('main',{style:{position:'relative',zIndex:10,maxWidth:'512px',margin:'0 auto',padding:'24px 16px 112px'}},
+    h('main',{className:'mobile-content-main',style:{position:'relative',zIndex:10,maxWidth:'640px',margin:'0 auto',padding:'24px 16px 112px'}},
       page==='dashboard'&&h(AdminDashboard,{students,records,settings,leaves}),
       page==='students'&&h(AdminStudents,{onBack:()=>setPage('dashboard'),students,onReload:reload,settings}),
       page==='attendance'&&h(AdminAttendance,{onBack:()=>setPage('dashboard'),records,students,settings}),
@@ -5352,14 +5445,9 @@ function StudentPanel({student,onLogout,isDemo=false}) {
     await reload();
   };
 
-  // ── FULLSCREEN EXAM MODE: tidak ada header/nav/sidebar sama sekali ──
-  if(activeExam) return h(CbtExamRunner,{
-    exam:activeExam,student,isDemo,
-    onFinish:()=>{setActiveExam(null);setPage('cbt');reload();}
-  });
+  if(activeExam) return h(CbtExamRunner,{exam:activeExam,student,isDemo,onFinish:()=>{setActiveExam(null);setPage('cbt');reload();}});
   if(loading||!settings)return h(LoadingScreen,{msg:'Memuat data...'});
   const nav=[{id:'home',label:'Beranda',icon:'\uD83C\uDFE0'},{id:'cbt',label:'Ujian',icon:'\uD83D\uDCDD'},{id:'history',label:'Riwayat',icon:'\uD83D\uDCDC'},{id:'kartu',label:'Kartu',icon:'\uD83C\uDD94'},{id:'leave',label:'Izin',icon:'\uD83D\uDCDD'},{id:'profile',label:'Profil',icon:'\uD83D\uDC64'}];
-
   if(isDesktop){
     const stu=student;
     const doLogout=()=>{onLogout();};
@@ -5392,7 +5480,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
       h('p',{style:{color:toast.type==='success'?'#00ff88':'#f87171',fontFamily:MONO,fontSize:'13px',fontWeight:'600',lineHeight:'1.5'}},toast.msg)
     ),
     h('header',{style:Object.assign({},glS,{position:'sticky',top:0,zIndex:30,borderBottom:'1px solid var(--border)'})},
-      h('div',{style:{maxWidth:'512px',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
+      h('div',{className:'mobile-header-inner',style:{maxWidth:'100%',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
         h('div',{style:{display:'flex',alignItems:'center',gap:'8px'}},
           h('div',{style:{width:'32px',height:'32px',borderRadius:'8px',background:'var(--accent-bg)',border:'1px solid rgba(0,240,255,.3)',display:'flex',alignItems:'center',justifyContent:'center',fontFamily:ORB,fontSize:'12px',color:'var(--accent)'}},student.name.charAt(0)),
           h('div',null,h('h1',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:'var(--text-primary)',letterSpacing:'0.1em'}},'ABSENSI',h('span',{style:{color:'#a855f7'}},'KU')),h('p',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--accent-dim)',letterSpacing:'0.3em'}},student.studentCode+' - '+student.kelas))
@@ -5404,7 +5492,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
         )
       )
     ),
-    h('main',{style:{position:'relative',zIndex:10,maxWidth:'512px',margin:'0 auto',padding:'24px 16px 112px'}},
+    h('main',{className:'mobile-content-main',style:{position:'relative',zIndex:10,maxWidth:'640px',margin:'0 auto',padding:'24px 16px 112px'}},
       page==='home'&&h(StudentHome,{student,records,settings,school:settings,announcements:anns,leaves,onOpenCamera:a=>setCamAction(a)}),
       page==='history'&&h(StudentHistory,{onBack:()=>setPage('home'),student,records,settings}),
       page==='calendar'&&h(StudentCalendar,{onBack:()=>setPage('home'),student,records,settings,leaves}),
@@ -5621,7 +5709,7 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
     h(ParticleBg),
     // Header
     h('header', {style:{position:'sticky',top:0,zIndex:20,background:'var(--header-bg)',backdropFilter:'blur(20px)',borderBottom:'1px solid var(--border)'}},
-      h('div', {style:{maxWidth:'512px',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
+      h('div', {className:'mobile-header-inner',style:{maxWidth:'100%',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
         h('div', {style:{display:'flex',alignItems:'center',gap:'10px'}},
           h('div', {style:{width:'36px',height:'36px',borderRadius:'10px',background:'rgba(250,204,21,.15)',border:'1px solid rgba(250,204,21,.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px'}}, '👨‍🏫'),
           h('div', null,
@@ -5636,7 +5724,7 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
       )
     ),
     // Content
-    h('main', {style:{position:'relative',zIndex:10,maxWidth:'512px',margin:'0 auto',padding:'20px 16px 100px'}},
+    h('main', {className:'mobile-content-main',style:{position:'relative',zIndex:10,maxWidth:'640px',margin:'0 auto',padding:'20px 16px 100px'}},
       isDemo&&h('div',{style:{margin:'0 0 16px',padding:'10px 14px',borderRadius:'12px',background:'rgba(250,204,21,.08)',border:'1px solid rgba(250,204,21,.25)',display:'flex',alignItems:'center',gap:'8px'}},h('span',{style:{fontSize:'16px'}},'\uD83C\uDFAE'),h('div',null,h('p',{style:{color:'#facc15',fontSize:'10px',fontFamily:MONO,fontWeight:'bold'}},'MODE DEMO'),h('p',{style:{color:'rgba(250,204,21,.5)',fontSize:'9px',fontFamily:MONO}},'Data tidak tersimpan ke database'))),
       // Stat cards
       h('div', {style:{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:'10px',marginBottom:'20px'}},
@@ -5809,7 +5897,7 @@ function GuruMapelPanel({teacher, onLogout, isDemo=false}) {
   return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',color:'var(--text-primary)'}},
     h(ParticleBg),
     h('header',{style:{position:'sticky',top:0,zIndex:20,background:'var(--header-bg)',backdropFilter:'blur(20px)',borderBottom:'1px solid var(--border)'}},
-      h('div',{style:{maxWidth:'512px',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
+      h('div',{className:'mobile-header-inner',style:{maxWidth:'100%',margin:'0 auto',padding:'12px 16px',display:'flex',alignItems:'center',justifyContent:'space-between'}},
         h('div',{style:{display:'flex',alignItems:'center',gap:'10px'}},
           h('div',{style:{width:'36px',height:'36px',borderRadius:'10px',background:'rgba(168,85,247,.15)',border:'1px solid rgba(168,85,247,.3)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px'}},'📚'),
           h('div',null,
@@ -6192,12 +6280,7 @@ function showInstallModal(){
 </script>
 
 <script>
-  navigator.serviceWorker.addEventListener('message', function(event){
-    if(event.data&&event.data.type==='CBT_CACHE_CLEARED'){
-      var keys=Object.keys(sessionStorage);
-      keys.forEach(function(k){if(k.startsWith('cbt_q_'))sessionStorage.removeItem(k);});
-    }
-  });
+  navigator.serviceWorker.addEventListener('message',function(event){if(event.data&&event.data.type==='CBT_CACHE_CLEARED'){var keys=Object.keys(sessionStorage);keys.forEach(function(k){if(k.startsWith('cbt_q_'))sessionStorage.removeItem(k);});}});
 </script>
 
 </body>
