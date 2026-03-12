@@ -68,23 +68,6 @@ input[type=date],select{color-scheme:light dark}
   --particle-color:#00f0ff;
 }
 
-/* ─── SEMBUNYIKAN NAVIGASI SAAT UJIAN ─────────── */
-body.exam-mode .mobile-nav,
-body.exam-mode .mobile-header,
-body.exam-mode .app-sidebar,
-body.exam-mode #nav-bar-root {
-  display: none !important;
-  pointer-events: none !important;
-}
-body.exam-mode .app-content {
-  margin-left: 0 !important;
-  width: 100% !important;
-}
-body.exam-mode {
-  user-select: none !important;
-  -webkit-user-select: none !important;
-}
-
 /* ─── RESPONSIVE PC LAYOUT ─────────────────────── */
 :root { --sidebar-w: 230px; }
 @media (min-width: 768px) {
@@ -4171,10 +4154,9 @@ function CbtSessionDetail({session,questions,onClose,onSave}) {
 // ═══════════════════════════════════════════════════════════════════
 // STUDENT CBT — Tampilan & Pengerjaan Ujian Siswa
 // ═══════════════════════════════════════════════════════════════════
-function StudentCBT({student,settings,isDemo,onBack}) {
+function StudentCBT({student,settings,isDemo,onBack,onExamStart}) {
   const [exams,setExams]=useState([]);
   const [loading,setLoading]=useState(true);
-  const [activeExam,setActiveExam]=useState(null);
 
   const reload=async()=>{
     setLoading(true);
@@ -4189,8 +4171,6 @@ function StudentCBT({student,settings,isDemo,onBack}) {
     }
   };
   useEffect(()=>{if(!isDemo)reload();else{setExams([{id:'demo-exam',title:'Ujian Demo Matematika',description:'Ini adalah ujian demonstrasi',kelas:student.kelas,mapel:'Matematika',duration_minutes:30,status:'active',shuffle_questions:true,shuffle_answers:true}]);setLoading(false);}},[]);
-
-  if(activeExam) return h(CbtExamRunner,{exam:activeExam,student,isDemo,onFinish:()=>{setActiveExam(null);reload();}});
 
   if(loading) return h(LoadingScreen,{msg:'Memuat ujian...'});
 
@@ -4209,7 +4189,7 @@ function StudentCBT({student,settings,isDemo,onBack}) {
         h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-dim)',marginTop:'6px'}},'Ujian akan muncul di sini jika guru/admin mengaktifkannya.')
       ):
       h('div',{style:{display:'flex',flexDirection:'column',gap:'12px'}},
-        exams.map(e=>h(CbtExamCard,{key:e.id,exam:e,student,isDemo,onStart:()=>setActiveExam(e)}))
+        exams.map(e=>h(CbtExamCard,{key:e.id,exam:e,student,isDemo,onStart:()=>onExamStart&&onExamStart(e)}))
       )
   );
 }
@@ -4453,7 +4433,6 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   // Auto foto tiap 30 detik
   useEffect(()=>{
     if(!camStream||submitted) return;
-    // Jitter: tiap siswa auto-foto di waktu sedikit berbeda (hindari spike)
     const jitter=25000+Math.floor(Math.random()*10000);
     const iv=setInterval(()=>capturePhoto(false),jitter);
     return()=>clearInterval(iv);
@@ -4474,16 +4453,6 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     }),1000);
     return()=>clearInterval(iv);
   },[timeLeft,submitted]);
-
-  // ── Aktifkan exam-mode: sembunyikan semua nav UI ─────────────────
-  useEffect(()=>{
-    if(submitted||loading||!tokenPassed){
-      document.body.classList.remove('exam-mode');
-      return;
-    }
-    document.body.classList.add('exam-mode');
-    return()=>document.body.classList.remove('exam-mode');
-  },[submitted,loading,tokenPassed]);
 
   // ── Blokir back button & close PWA saat ujian ───────────────────
   useEffect(()=>{
@@ -4555,50 +4524,42 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     };
   },[submitted,loading,isDemo,tokenPassed]);
 
-  // ── Anti-nyontek: blokir copy, paste, right-click, shortcut ──────
+  // ── Anti-nyontek: blokir copy, paste, right-click, shortcut, devtools
   useEffect(()=>{
     if(submitted||loading||!tokenPassed) return;
-    // Blokir right-click
     const noCtx=e=>{e.preventDefault();return false;};
-    // Blokir copy / cut / paste
     const noCopy=e=>{e.preventDefault();setShowWarning('⚠️ Copy/Paste tidak diizinkan selama ujian!');setTimeout(()=>setShowWarning(null),3000);return false;};
-    // Blokir keyboard shortcut berbahaya
     const noKey=e=>{
       const bad=(
-        (e.ctrlKey||e.metaKey)&&['c','v','x','a','u','s','p','f','i'].includes(e.key.toLowerCase()) ||
-        e.key==='F12' ||
-        (e.ctrlKey&&e.shiftKey&&['i','j','c','k'].includes(e.key.toLowerCase())) ||
-        e.key==='PrintScreen' ||
-        e.key==='F5' ||
+        (e.ctrlKey||e.metaKey)&&['c','v','x','a','u','s','p','f','i'].includes(e.key.toLowerCase())||
+        e.key==='F12'||
+        (e.ctrlKey&&e.shiftKey&&['i','j','c','k'].includes(e.key.toLowerCase()))||
+        e.key==='PrintScreen'||
+        e.key==='F5'||
         (e.ctrlKey&&e.key==='r')
       );
       if(bad){
         e.preventDefault();
         const v={type:'Keyboard shortcut terlarang: '+(e.ctrlKey?'Ctrl+':e.metaKey?'Cmd+':'')+(e.shiftKey?'Shift+':'')+e.key,time:new Date().toISOString()};
         setViolations(p=>{const nv=[...p,v];if(sessionRef.current&&!isDemo)DB.saveCbtSession({...sessionRef.current,violations:nv}).catch(()=>{});return nv;});
-        setShowWarning('⚠️ Shortcut keyboard terlarang terdeteksi!');
+        setShowWarning('⚠️ Shortcut keyboard terlarang!');
         setTimeout(()=>setShowWarning(null),3000);
         return false;
       }
     };
-    // Blokir select text
     const noSel=e=>{e.preventDefault();return false;};
-    // Blokir drag
     const noDrag=e=>{e.preventDefault();return false;};
-    // Deteksi devtools (resize trick)
     const devToolsCheck=setInterval(()=>{
-      const threshold=160;
-      if(window.outerWidth-window.innerWidth>threshold||window.outerHeight-window.innerHeight>threshold){
+      if(window.outerWidth-window.innerWidth>160||window.outerHeight-window.innerHeight>160){
         const v={type:'DevTools terdeteksi terbuka',time:new Date().toISOString()};
         setViolations(p=>{
-          if(p.some(x=>x.type===v.type)) return p;
+          if(p.some(x=>x.type===v.type))return p;
           const nv=[...p,v];if(sessionRef.current&&!isDemo)DB.saveCbtSession({...sessionRef.current,violations:nv}).catch(()=>{});return nv;
         });
         setShowWarning('⚠️ Developer Tools terdeteksi! Segera tutup!');
         setTimeout(()=>setShowWarning(null),4000);
       }
     },2000);
-    // Deteksi window blur (pindah aplikasi)
     const onBlur=()=>{
       const v={type:'Pindah aplikasi / window blur',time:new Date().toISOString()};
       setViolations(p=>{const nv=[...p,v];if(sessionRef.current&&!isDemo)DB.saveCbtSession({...sessionRef.current,violations:nv}).catch(()=>{});return nv;});
@@ -4669,7 +4630,9 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       // Pakai queue + retry untuk toleransi lonjakan bersamaan
       await queueSubmit({...sessionRef.current,end_time:new Date().toISOString(),status:'submitted',score,score_max:scoreMax,answers:finalAns});
     }
-  },[submitted,camStream,isDemo]);
+    // Jika waktu habis (auto=true), langsung keluar setelah submit
+    if(auto) setTimeout(()=>onFinish(),2500);
+  },[submitted,camStream,isDemo,onFinish]);
 
   // ── Token gate ───────────────────────────────────────────────────
   if(!tokenPassed) return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}},
@@ -4687,9 +4650,8 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
         tokenError&&h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'#f87171',marginTop:'8px'}},tokenError)
       ),
       h('div',{style:{display:'flex',gap:'10px',width:'100%'}},
-        h('button',{onClick:onFinish,style:{flex:1,padding:'12px',borderRadius:'12px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer',fontFamily:MONO,fontSize:'11px'}},'← Kembali'),
         h('button',{onClick:()=>{if(tokenInput===exam.token){setTokenPassed(true);setTokenError('');}else setTokenError('Token salah, coba lagi.');},
-          style:{flex:2,padding:'12px',borderRadius:'12px',background:'rgba(250,204,21,.12)',border:'1px solid rgba(250,204,21,.4)',color:'#facc15',cursor:'pointer',fontFamily:ORB,fontSize:'12px',fontWeight:'bold',letterSpacing:'.08em'}},'✓ MASUK UJIAN')
+          style:{width:'100%',padding:'12px',borderRadius:'12px',background:'rgba(250,204,21,.12)',border:'1px solid rgba(250,204,21,.4)',color:'#facc15',cursor:'pointer',fontFamily:ORB,fontSize:'12px',fontWeight:'bold',letterSpacing:'.08em'}},'✓ MASUK UJIAN')
       )
     )
   );
@@ -5345,6 +5307,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
   const[camAction,setCamAction]=useState(null);
   const[loading,setLoading]=useState(true);
   const[loadError,setLoadError]=useState(null);
+  const[activeExam,setActiveExam]=useState(null);
   const isDesktop=useIsDesktop();
   const[records,setRecords]=useState([]);
   const[leaves,setLeaves]=useState([]);
@@ -5420,6 +5383,11 @@ function StudentPanel({student,onLogout,isDemo=false}) {
 
   if(loading||!settings)return h(LoadingScreen,{msg:'Memuat data...'});
   const nav=[{id:'home',label:'Beranda',icon:'\uD83C\uDFE0'},{id:'cbt',label:'Ujian',icon:'\uD83D\uDCDD'},{id:'history',label:'Riwayat',icon:'\uD83D\uDCDC'},{id:'kartu',label:'Kartu',icon:'\uD83C\uDD94'},{id:'leave',label:'Izin',icon:'\uD83D\uDCDD'},{id:'profile',label:'Profil',icon:'\uD83D\uDC64'}];
+  // Render CbtExamRunner fullscreen - menggantikan seluruh UI StudentPanel
+  if(activeExam) return h('div',{style:{position:'fixed',inset:0,zIndex:9999,background:'var(--bg-base)'}},
+    h(CbtExamRunner,{exam:activeExam,student,isDemo,onFinish:()=>{setActiveExam(null);setPage('cbt');reload();}})
+  );
+
   if(isDesktop){
     const stu=student;
     const doLogout=()=>{onLogout();};
@@ -5436,7 +5404,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
             page==='home'&&h(StudentHome,{student,records,settings,school:settings,announcements:anns,leaves,onOpenCamera:act=>{setCamAction(act);setPage('camera');}}),
             page==='history'&&h(StudentHistory,{onBack:()=>setPage('home'),student,records,settings}),
             page==='kartu'&&h(StudentKartu,{onBack:()=>setPage('home'),student,settings}),
-            page==='cbt'&&h(StudentCBT,{student,settings,isDemo,onBack:()=>setPage('home')}),
+            page==='cbt'&&h(StudentCBT,{student,settings,isDemo,onBack:()=>setPage('home'),onExamStart:setActiveExam}),
             page==='leave'&&h(StudentLeave,{onBack:()=>setPage('home'),student,leaves,onReload:reload,isDemo}),
             page==='profile'&&h(StudentProfile,{onBack:()=>setPage('home'),student,records,settings})
           ),
@@ -5469,7 +5437,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
       page==='history'&&h(StudentHistory,{onBack:()=>setPage('home'),student,records,settings}),
       page==='calendar'&&h(StudentCalendar,{onBack:()=>setPage('home'),student,records,settings,leaves}),
       page==='kartu'&&h(StudentKartu,{onBack:()=>setPage('home'),student,settings}),
-      page==='cbt'&&h(StudentCBT,{student,settings,isDemo,onBack:()=>setPage('home')}),
+      page==='cbt'&&h(StudentCBT,{student,settings,isDemo,onBack:()=>setPage('home'),onExamStart:setActiveExam}),
       page==='leave'&&h(StudentLeave,{onBack:()=>setPage('home'),student,leaves,onReload:reload}),
       page==='profile'&&h(StudentProfile,{onBack:()=>setPage('home'),student,records,settings})
     ),
@@ -6252,7 +6220,6 @@ function showInstallModal(){
 </script>
 
 <script>
-  // Dengarkan pesan dari SW (misal CBT cache cleared)
   navigator.serviceWorker.addEventListener('message', function(event){
     if(event.data && event.data.type === 'CBT_CACHE_CLEARED'){
       var keys = Object.keys(sessionStorage);
