@@ -40,7 +40,17 @@ input,textarea,select{font-size:16px!important}
 .afiu{animation:fade-in-up .6s ease-out forwards}
 .di{background:var(--input-bg);border:1px solid var(--accent-dim);color:var(--text-primary);outline:none;font-family:'Inter',sans-serif;transition:all .3s;width:100%}
 .di:focus{border-color:var(--accent);box-shadow:0 0 20px var(--accent-bg)}
-.di::placeholder{color:var(--text-dim)}
+.di::placeholder{color:var(--text-muted)}
+/* ── Pastikan teks selalu kontras ─── */
+p,span,label,h1,h2,h3,h4,h5,h6,li,td,th,div{color:inherit}
+/* Minimum contrast helpers */
+.text-readable{color:var(--text-primary)!important}
+.text-sub{color:var(--text-secondary)!important}
+.text-hint{color:var(--text-muted)!important}
+/* Input & select teks selalu primary */
+input,select,textarea{color:var(--text-primary)!important;background:var(--input-bg)}
+/* Tombol teks harus terbaca */
+button{color:inherit}
 input[type=date],select{color-scheme:light dark}
 #root{overscroll-behavior:none;height:100%;min-height:100vh}
 </style>
@@ -53,9 +63,9 @@ input[type=date],select{color-scheme:light dark}
   --border:rgba(0,240,255,.1);
   --border-s:rgba(0,240,255,.15);
   --text-primary:#ffffff;
-  --text-secondary:rgba(255,255,255,.6);
-  --text-muted:rgba(255,255,255,.3);
-  --text-dim:rgba(255,255,255,.15);
+  --text-secondary:rgba(255,255,255,.82);
+  --text-muted:rgba(255,255,255,.58);
+  --text-dim:rgba(255,255,255,.38);
   --accent:#00f0ff;
   --accent-dim:rgba(0,240,255,.2);
   --accent-bg:rgba(0,240,255,.08);
@@ -183,12 +193,12 @@ body, #root { overflow-x: hidden !important; max-width: 100vw; }
     border: 1px solid transparent; cursor: pointer; width: 100%;
     font-family: 'JetBrains Mono', monospace; font-size: 11px;
     text-align: left; transition: all .15s; background: transparent;
-    color: var(--text-muted); letter-spacing: 0.03em;
+    color: var(--text-secondary); letter-spacing: 0.03em;
   }
   .sb-item:hover   { background: var(--accent-bg); color: var(--text-secondary); }
   .sb-item.act     { background: var(--accent-bg) !important; color: var(--accent) !important; border-color: var(--accent-dim) !important; }
   .sb-item.sub     { padding-left: 26px; font-size: 10px; }
-  .sb-section-lbl  { font-family: 'JetBrains Mono',monospace; font-size: 8px; letter-spacing: .3em; color: var(--text-dim); padding: 10px 12px 4px; }
+  .sb-section-lbl  { font-family: 'JetBrains Mono',monospace; font-size: 8px; letter-spacing: .3em; color: var(--text-muted); padding: 10px 12px 4px; }
   .sb-action-btn   { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: 10px; cursor: pointer; width: 100%; font-family: 'JetBrains Mono',monospace; font-size: 11px; }
   .pc-topbar { background: var(--header-bg); backdrop-filter: blur(20px); border-bottom: 1px solid var(--border); padding: 14px 36px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 20; }
   .pc-page-title { font-family: 'Orbitron',monospace; font-size: 16px; font-weight: bold; color: var(--text-primary); letter-spacing: .08em; }
@@ -930,7 +940,7 @@ const THEMES = {
     name:'Cyber Cyan', mode:'dark', preview:'#00f0ff',
     '--bg-base':'#0a0a0f','--bg-panel':'rgba(15,15,26,.7)','--bg-panel-s':'rgba(15,15,26,.9)',
     '--bg-card':'var(--bg-card)','--border':'rgba(0,240,255,.1)','--border-s':'rgba(0,240,255,.15)',
-    '--text-primary':'#ffffff','--text-secondary':'var(--text-secondary)','--text-muted':'var(--text-muted)','--text-dim':'var(--text-dim)',
+    '--text-primary':'#ffffff','--text-secondary':'rgba(255,255,255,.82)','--text-muted':'rgba(255,255,255,.58)','--text-dim':'rgba(255,255,255,.38)',
     '--accent':'#00f0ff','--accent-dim':'rgba(0,240,255,.2)','--accent-bg':'rgba(0,240,255,.08)',
     '--accent2':'#a855f7','--accent2-dim':'rgba(168,85,247,.2)','--accent2-bg':'rgba(168,85,247,.08)',
     '--input-bg':'rgba(0,240,255,.05)','--nav-bg':'rgba(15,15,26,.95)','--header-bg':'rgba(15,15,26,.9)','--particle-color':'#00f0ff',
@@ -939,7 +949,7 @@ const THEMES = {
     name:'Neon Purple', mode:'dark', preview:'#a855f7',
     '--bg-base':'#08050f','--bg-panel':'rgba(20,10,35,.7)','--bg-panel-s':'rgba(20,10,35,.9)',
     '--bg-card':'var(--bg-card)','--border':'rgba(168,85,247,.15)','--border-s':'rgba(168,85,247,.2)',
-    '--text-primary':'#ffffff','--text-secondary':'var(--text-secondary)','--text-muted':'var(--text-muted)','--text-dim':'var(--text-dim)',
+    '--text-primary':'#ffffff','--text-secondary':'rgba(255,255,255,.82)','--text-muted':'rgba(255,255,255,.58)','--text-dim':'rgba(255,255,255,.38)',
     '--accent':'#a855f7','--accent-dim':'rgba(168,85,247,.25)','--accent-bg':'rgba(168,85,247,.1)',
     '--accent2':'#ec4899','--accent2-dim':'rgba(236,72,153,.2)','--accent2-bg':'rgba(236,72,153,.08)',
     '--input-bg':'rgba(168,85,247,.06)','--nav-bg':'rgba(20,10,35,.95)','--header-bg':'rgba(20,10,35,.9)','--particle-color':'#a855f7',
@@ -948,7 +958,7 @@ const THEMES = {
     name:'Matrix Green', mode:'dark', preview:'#00ff88',
     '--bg-base':'#050f08','--bg-panel':'rgba(5,20,12,.75)','--bg-panel-s':'rgba(5,20,12,.95)',
     '--bg-card':'rgba(0,255,136,.02)','--border':'rgba(0,255,136,.12)','--border-s':'rgba(0,255,136,.18)',
-    '--text-primary':'#e0ffe8','--text-secondary':'rgba(224,255,232,.6)','--text-muted':'rgba(224,255,232,.3)','--text-dim':'rgba(224,255,232,.15)',
+    '--text-primary':'#f0fff4','--text-secondary':'rgba(240,255,244,.85)','--text-muted':'rgba(240,255,244,.6)','--text-dim':'rgba(240,255,244,.4)',
     '--accent':'#00ff88','--accent-dim':'rgba(0,255,136,.22)','--accent-bg':'rgba(0,255,136,.08)',
     '--accent2':'#00d4aa','--accent2-dim':'rgba(0,212,170,.2)','--accent2-bg':'rgba(0,212,170,.08)',
     '--input-bg':'rgba(0,255,136,.05)','--nav-bg':'rgba(5,20,12,.97)','--header-bg':'rgba(5,20,12,.92)','--particle-color':'#00ff88',
@@ -957,7 +967,7 @@ const THEMES = {
     name:'Solar Flare', mode:'dark', preview:'#ff8800',
     '--bg-base':'#0f0800','--bg-panel':'rgba(26,15,0,.75)','--bg-panel-s':'rgba(26,15,0,.95)',
     '--bg-card':'rgba(255,136,0,.02)','--border':'rgba(255,136,0,.12)','--border-s':'rgba(255,136,0,.18)',
-    '--text-primary':'#fff8f0','--text-secondary':'rgba(255,248,240,.6)','--text-muted':'rgba(255,248,240,.3)','--text-dim':'rgba(255,248,240,.15)',
+    '--text-primary':'#fff8f0','--text-secondary':'rgba(255,248,240,.85)','--text-muted':'rgba(255,248,240,.62)','--text-dim':'rgba(255,248,240,.42)',
     '--accent':'#ff8800','--accent-dim':'rgba(255,136,0,.22)','--accent-bg':'rgba(255,136,0,.08)',
     '--accent2':'#ff3366','--accent2-dim':'rgba(255,51,102,.2)','--accent2-bg':'rgba(255,51,102,.08)',
     '--input-bg':'rgba(255,136,0,.05)','--nav-bg':'rgba(26,15,0,.97)','--header-bg':'rgba(26,15,0,.92)','--particle-color':'#ff8800',
@@ -966,7 +976,7 @@ const THEMES = {
     name:'Sakura Night', mode:'dark', preview:'#fb7185',
     '--bg-base':'#0f050a','--bg-panel':'rgba(25,8,18,.75)','--bg-panel-s':'rgba(25,8,18,.95)',
     '--bg-card':'rgba(251,113,133,.02)','--border':'rgba(251,113,133,.12)','--border-s':'rgba(251,113,133,.18)',
-    '--text-primary':'#fff0f3','--text-secondary':'rgba(255,240,243,.6)','--text-muted':'rgba(255,240,243,.3)','--text-dim':'rgba(255,240,243,.15)',
+    '--text-primary':'#fff0f3','--text-secondary':'rgba(255,240,243,.85)','--text-muted':'rgba(255,240,243,.62)','--text-dim':'rgba(255,240,243,.42)',
     '--accent':'#fb7185','--accent-dim':'rgba(251,113,133,.22)','--accent-bg':'rgba(251,113,133,.08)',
     '--accent2':'#f472b6','--accent2-dim':'rgba(244,114,182,.2)','--accent2-bg':'rgba(244,114,182,.08)',
     '--input-bg':'rgba(251,113,133,.05)','--nav-bg':'rgba(25,8,18,.97)','--header-bg':'rgba(25,8,18,.92)','--particle-color':'#fb7185',
@@ -976,7 +986,7 @@ const THEMES = {
     name:'Clean White', mode:'light', preview:'#6366f1',
     '--bg-base':'#f8fafc','--bg-panel':'rgba(255,255,255,.85)','--bg-panel-s':'rgba(255,255,255,.95)',
     '--bg-card':'rgba(0,0,0,.03)','--border':'rgba(99,102,241,.15)','--border-s':'rgba(99,102,241,.25)',
-    '--text-primary':'#0f172a','--text-secondary':'rgba(15,23,42,.6)','--text-muted':'rgba(15,23,42,.4)','--text-dim':'rgba(15,23,42,.2)',
+    '--text-primary':'#0f172a','--text-secondary':'rgba(15,23,42,.78)','--text-muted':'rgba(15,23,42,.58)','--text-dim':'rgba(15,23,42,.2)',
     '--accent':'#6366f1','--accent-dim':'rgba(99,102,241,.25)','--accent-bg':'rgba(99,102,241,.1)',
     '--accent2':'#8b5cf6','--accent2-dim':'rgba(139,92,246,.2)','--accent2-bg':'rgba(139,92,246,.08)',
     '--input-bg':'rgba(99,102,241,.06)','--nav-bg':'rgba(255,255,255,.97)','--header-bg':'rgba(255,255,255,.95)','--particle-color':'#6366f1',
@@ -985,7 +995,7 @@ const THEMES = {
     name:'Sky Blue', mode:'light', preview:'#0ea5e9',
     '--bg-base':'#f0f9ff','--bg-panel':'rgba(255,255,255,.85)','--bg-panel-s':'rgba(255,255,255,.95)',
     '--bg-card':'rgba(0,0,0,.03)','--border':'rgba(14,165,233,.15)','--border-s':'rgba(14,165,233,.25)',
-    '--text-primary':'#0c1a2e','--text-secondary':'rgba(12,26,46,.6)','--text-muted':'rgba(12,26,46,.4)','--text-dim':'rgba(12,26,46,.2)',
+    '--text-primary':'#0c1a2e','--text-secondary':'rgba(12,26,46,.78)','--text-muted':'rgba(12,26,46,.58)','--text-dim':'rgba(12,26,46,.2)',
     '--accent':'#0ea5e9','--accent-dim':'rgba(14,165,233,.25)','--accent-bg':'rgba(14,165,233,.1)',
     '--accent2':'#6366f1','--accent2-dim':'rgba(99,102,241,.2)','--accent2-bg':'rgba(99,102,241,.08)',
     '--input-bg':'rgba(14,165,233,.06)','--nav-bg':'rgba(255,255,255,.97)','--header-bg':'rgba(255,255,255,.95)','--particle-color':'#0ea5e9',
@@ -994,7 +1004,7 @@ const THEMES = {
     name:'Mint Fresh', mode:'light', preview:'#10b981',
     '--bg-base':'#f0fdf4','--bg-panel':'rgba(255,255,255,.85)','--bg-panel-s':'rgba(255,255,255,.95)',
     '--bg-card':'rgba(0,0,0,.03)','--border':'rgba(16,185,129,.15)','--border-s':'rgba(16,185,129,.25)',
-    '--text-primary':'#052e16','--text-secondary':'rgba(5,46,22,.6)','--text-muted':'rgba(5,46,22,.4)','--text-dim':'rgba(5,46,22,.2)',
+    '--text-primary':'#052e16','--text-secondary':'rgba(5,46,22,.78)','--text-muted':'rgba(5,46,22,.58)','--text-dim':'rgba(5,46,22,.2)',
     '--accent':'#10b981','--accent-dim':'rgba(16,185,129,.25)','--accent-bg':'rgba(16,185,129,.1)',
     '--accent2':'#0d9488','--accent2-dim':'rgba(13,148,136,.2)','--accent2-bg':'rgba(13,148,136,.08)',
     '--input-bg':'rgba(16,185,129,.06)','--nav-bg':'rgba(255,255,255,.97)','--header-bg':'rgba(255,255,255,.95)','--particle-color':'#10b981',
@@ -1003,7 +1013,7 @@ const THEMES = {
     name:'Blossom', mode:'light', preview:'#f43f5e',
     '--bg-base':'#fff1f2','--bg-panel':'rgba(255,255,255,.85)','--bg-panel-s':'rgba(255,255,255,.95)',
     '--bg-card':'rgba(0,0,0,.03)','--border':'rgba(244,63,94,.15)','--border-s':'rgba(244,63,94,.25)',
-    '--text-primary':'#1a0509','--text-secondary':'rgba(26,5,9,.6)','--text-muted':'rgba(26,5,9,.4)','--text-dim':'rgba(26,5,9,.2)',
+    '--text-primary':'#1a0509','--text-secondary':'rgba(26,5,9,.78)','--text-muted':'rgba(26,5,9,.58)','--text-dim':'rgba(26,5,9,.2)',
     '--accent':'#f43f5e','--accent-dim':'rgba(244,63,94,.25)','--accent-bg':'rgba(244,63,94,.1)',
     '--accent2':'#e879f9','--accent2-dim':'rgba(232,121,249,.2)','--accent2-bg':'rgba(232,121,249,.08)',
     '--input-bg':'rgba(244,63,94,.06)','--nav-bg':'rgba(255,255,255,.97)','--header-bg':'rgba(255,255,255,.95)','--particle-color':'#f43f5e',
@@ -1658,7 +1668,7 @@ function AdminDashboard({students,records,settings,leaves}) {
       h('div',{style:{display:'flex',alignItems:'flex-end',gap:'8px',height:'128px'}},
         weekData.map((w,i)=>h('div',{key:i,style:{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:'4px'}},
           h('div',{style:{width:'100%',height:'100px',display:'flex',flexDirection:'column-reverse'}},h('div',{style:{width:'100%',borderRadius:'4px 4px 0 0',background:'linear-gradient(to top,rgba(0,240,255,.8),rgba(0,240,255,.4))',height:(w.present/maxP*100)+'%',minHeight:w.present>0?'4px':'0'}})),
-          h('span',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--text-muted)'}},w.day),
+          h('span',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)'}},w.day),
           h('span',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--accent)'}},w.present)
         ))
       )
@@ -2221,7 +2231,7 @@ function StudentHistory({student,records,settings,onBack}) {
         r.clockIn&&h('span',{style:{fontSize:'9px',fontFamily:MONO,padding:'4px 8px',borderRadius:'999px',border:'1px solid',color:isLate(r.clockIn,settings.schoolStart)?'#fb923c':'#00ff88',background:isLate(r.clockIn,settings.schoolStart)?'rgba(251,146,60,.1)':'rgba(0,255,136,.1)',borderColor:isLate(r.clockIn,settings.schoolStart)?'rgba(251,146,60,.2)':'rgba(0,255,136,.2)'}},isLate(r.clockIn,settings.schoolStart)?'Terlambat':'Tepat Waktu')
       ),
       h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px'}},
-        h('div',{style:Object.assign({},gl,{borderRadius:'8px',padding:'12px'})},h('p',{style:{color:'var(--accent-dim)',fontSize:'9px',fontFamily:MONO,letterSpacing:'0.1em',marginBottom:'4px'}},'MASUK'),h('p',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:'var(--accent)'}},r.clockIn||'--:--'),r.clockInPhoto&&h('img',{src:r.clockInPhoto,style:{width:'100%',height:'48px',objectFit:'cover',borderRadius:'4px',marginTop:'8px',opacity:.7}}),r.clockInLocation&&h('a',{href:'https://www.google.com/maps?q='+r.clockInLocation.lat+','+r.clockInLocation.lng,target:'_blank',rel:'noopener noreferrer',style:{fontSize:'8px',fontFamily:MONO,color:'var(--text-muted)',display:'block',marginTop:'4px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textDecoration:'none'}},'\uD83D\uDCCD '+(r.clockInLocation.address||fmtCoords(r.clockInLocation)))),
+        h('div',{style:Object.assign({},gl,{borderRadius:'8px',padding:'12px'})},h('p',{style:{color:'var(--accent-dim)',fontSize:'9px',fontFamily:MONO,letterSpacing:'0.1em',marginBottom:'4px'}},'MASUK'),h('p',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:'var(--accent)'}},r.clockIn||'--:--'),r.clockInPhoto&&h('img',{src:r.clockInPhoto,style:{width:'100%',height:'48px',objectFit:'cover',borderRadius:'4px',marginTop:'8px',opacity:.7}}),r.clockInLocation&&h('a',{href:'https://www.google.com/maps?q='+r.clockInLocation.lat+','+r.clockInLocation.lng,target:'_blank',rel:'noopener noreferrer',style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)',display:'block',marginTop:'4px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',textDecoration:'none'}},'\uD83D\uDCCD '+(r.clockInLocation.address||fmtCoords(r.clockInLocation)))),
         h('div',{style:Object.assign({},gl,{borderRadius:'8px',padding:'12px'})},h('p',{style:{color:'rgba(168,85,247,.4)',fontSize:'9px',fontFamily:MONO,letterSpacing:'0.1em',marginBottom:'4px'}},'PULANG'),h('p',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:'#a855f7'}},r.clockOut||'--:--'),r.clockOutStatus&&h('span',{style:{fontSize:'9px',fontFamily:MONO,marginTop:'4px',display:'block',color:r.clockOutStatus==='lembur'?'#00ff88':r.clockOutStatus==='cepat'?'#f87171':'#a855f7'}},r.clockOutStatus==='lembur'?'Lembur':r.clockOutStatus==='cepat'?'Cepat Pulang':'Tepat Waktu'),r.clockOutPhoto&&h('img',{src:r.clockOutPhoto,style:{width:'100%',height:'48px',objectFit:'cover',borderRadius:'4px',marginTop:'8px',opacity:.7}}))
       )
     ))
@@ -3135,9 +3145,9 @@ function StudentKartu({student, settings,onBack}) {
       // QR + kode
       h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center'}},
         h('div',null,
-          h('p',{style:{fontFamily:'JetBrains Mono,monospace',fontSize:'8px',color:'var(--text-muted)',letterSpacing:'0.2em',marginBottom:'6px'}},'KODE SISWA'),
+          h('p',{style:{fontFamily:'JetBrains Mono,monospace',fontSize:'9px',color:'var(--text-muted)',letterSpacing:'0.2em',marginBottom:'6px'}},'KODE SISWA'),
           h('p',{style:{fontFamily:'Orbitron,monospace',fontSize:'18px',fontWeight:'bold',color:'var(--accent)',letterSpacing:'0.2em'}},student.studentCode),
-          h('p',{style:{fontFamily:'JetBrains Mono,monospace',fontSize:'8px',color:'var(--text-dim)',marginTop:'8px'}},'AbsensiKu Digital Card')
+          h('p',{style:{fontFamily:'JetBrains Mono,monospace',fontSize:'9px',color:'var(--text-muted)',marginTop:'8px'}},'AbsensiKu Digital Card')
         ),
         h('div',{style:{background:'#fff',padding:'6px',borderRadius:'10px',border:'2px solid rgba(0,240,255,.4)'}},
           h('div',{ref,style:{width:'80px',height:'80px'}})
@@ -4057,7 +4067,7 @@ function CbtResultAdmin({exams,students,onReload}) {
         ].map((s,i)=>h('div',{key:i,style:{padding:'12px',borderRadius:'12px',background:'var(--bg-card)',border:'1px solid var(--border)',textAlign:'center'}},
           h('p',{style:{fontSize:'18px',marginBottom:'4px'}},s.icon),
           h('p',{style:{fontFamily:ORB,fontSize:'16px',fontWeight:'bold',color:s.color}},s.val),
-          h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'var(--text-dim)',marginTop:'2px'}},s.label)
+          h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)',marginTop:'2px'}},s.label)
         ))
       ),
 
@@ -6163,7 +6173,7 @@ function MapelRekap({teacher, students, subjAtt, kelasList,onBack}) {
               const c=st==='Hadir'?'#00ff88':st==='Izin'?'#facc15':st==='Sakit'?'#60a5fa':'#f87171';
               return h('div',{key:st,style:{textAlign:'center',padding:'6px',borderRadius:'8px',background:c+'12',border:'1px solid '+c+'25'}},
                 h('p',{style:{fontFamily:ORB,fontSize:'16px',fontWeight:'bold',color:c}},n),
-                h('p',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--text-muted)'}},st)
+                h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)'}},st)
               );
             })
           ),
