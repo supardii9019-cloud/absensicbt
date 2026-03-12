@@ -68,6 +68,23 @@ input[type=date],select{color-scheme:light dark}
   --particle-color:#00f0ff;
 }
 
+/* ─── SEMBUNYIKAN NAVIGASI SAAT UJIAN ─────────── */
+body.exam-mode .mobile-nav,
+body.exam-mode .mobile-header,
+body.exam-mode .app-sidebar,
+body.exam-mode #nav-bar-root {
+  display: none !important;
+  pointer-events: none !important;
+}
+body.exam-mode .app-content {
+  margin-left: 0 !important;
+  width: 100% !important;
+}
+body.exam-mode {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
 /* ─── RESPONSIVE PC LAYOUT ─────────────────────── */
 :root { --sidebar-w: 230px; }
 @media (min-width: 768px) {
@@ -4458,6 +4475,16 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     return()=>clearInterval(iv);
   },[timeLeft,submitted]);
 
+  // ── Aktifkan exam-mode: sembunyikan semua nav UI ─────────────────
+  useEffect(()=>{
+    if(submitted||loading||!tokenPassed){
+      document.body.classList.remove('exam-mode');
+      return;
+    }
+    document.body.classList.add('exam-mode');
+    return()=>document.body.classList.remove('exam-mode');
+  },[submitted,loading,tokenPassed]);
+
   // ── Blokir back button & close PWA saat ujian ───────────────────
   useEffect(()=>{
     if(submitted||loading||!tokenPassed) return;
@@ -4525,6 +4552,77 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     return()=>{
       document.removeEventListener('fullscreenchange',handleFsChange);
       if(document.exitFullscreen&&document.fullscreenElement) document.exitFullscreen().catch(()=>{});
+    };
+  },[submitted,loading,isDemo,tokenPassed]);
+
+  // ── Anti-nyontek: blokir copy, paste, right-click, shortcut ──────
+  useEffect(()=>{
+    if(submitted||loading||!tokenPassed) return;
+    // Blokir right-click
+    const noCtx=e=>{e.preventDefault();return false;};
+    // Blokir copy / cut / paste
+    const noCopy=e=>{e.preventDefault();setShowWarning('⚠️ Copy/Paste tidak diizinkan selama ujian!');setTimeout(()=>setShowWarning(null),3000);return false;};
+    // Blokir keyboard shortcut berbahaya
+    const noKey=e=>{
+      const bad=(
+        (e.ctrlKey||e.metaKey)&&['c','v','x','a','u','s','p','f','i'].includes(e.key.toLowerCase()) ||
+        e.key==='F12' ||
+        (e.ctrlKey&&e.shiftKey&&['i','j','c','k'].includes(e.key.toLowerCase())) ||
+        e.key==='PrintScreen' ||
+        e.key==='F5' ||
+        (e.ctrlKey&&e.key==='r')
+      );
+      if(bad){
+        e.preventDefault();
+        const v={type:'Keyboard shortcut terlarang: '+(e.ctrlKey?'Ctrl+':e.metaKey?'Cmd+':'')+(e.shiftKey?'Shift+':'')+e.key,time:new Date().toISOString()};
+        setViolations(p=>{const nv=[...p,v];if(sessionRef.current&&!isDemo)DB.saveCbtSession({...sessionRef.current,violations:nv}).catch(()=>{});return nv;});
+        setShowWarning('⚠️ Shortcut keyboard terlarang terdeteksi!');
+        setTimeout(()=>setShowWarning(null),3000);
+        return false;
+      }
+    };
+    // Blokir select text
+    const noSel=e=>{e.preventDefault();return false;};
+    // Blokir drag
+    const noDrag=e=>{e.preventDefault();return false;};
+    // Deteksi devtools (resize trick)
+    const devToolsCheck=setInterval(()=>{
+      const threshold=160;
+      if(window.outerWidth-window.innerWidth>threshold||window.outerHeight-window.innerHeight>threshold){
+        const v={type:'DevTools terdeteksi terbuka',time:new Date().toISOString()};
+        setViolations(p=>{
+          if(p.some(x=>x.type===v.type)) return p;
+          const nv=[...p,v];if(sessionRef.current&&!isDemo)DB.saveCbtSession({...sessionRef.current,violations:nv}).catch(()=>{});return nv;
+        });
+        setShowWarning('⚠️ Developer Tools terdeteksi! Segera tutup!');
+        setTimeout(()=>setShowWarning(null),4000);
+      }
+    },2000);
+    // Deteksi window blur (pindah aplikasi)
+    const onBlur=()=>{
+      const v={type:'Pindah aplikasi / window blur',time:new Date().toISOString()};
+      setViolations(p=>{const nv=[...p,v];if(sessionRef.current&&!isDemo)DB.saveCbtSession({...sessionRef.current,violations:nv}).catch(()=>{});return nv;});
+      setShowWarning('⚠️ Terdeteksi keluar dari aplikasi ujian!');
+      setTimeout(()=>setShowWarning(null),4000);
+    };
+    document.addEventListener('contextmenu',noCtx);
+    document.addEventListener('copy',noCopy);
+    document.addEventListener('cut',noCopy);
+    document.addEventListener('paste',noCopy);
+    document.addEventListener('keydown',noKey);
+    document.addEventListener('selectstart',noSel);
+    document.addEventListener('dragstart',noDrag);
+    window.addEventListener('blur',onBlur);
+    return()=>{
+      document.removeEventListener('contextmenu',noCtx);
+      document.removeEventListener('copy',noCopy);
+      document.removeEventListener('cut',noCopy);
+      document.removeEventListener('paste',noCopy);
+      document.removeEventListener('keydown',noKey);
+      document.removeEventListener('selectstart',noSel);
+      document.removeEventListener('dragstart',noDrag);
+      window.removeEventListener('blur',onBlur);
+      clearInterval(devToolsCheck);
     };
   },[submitted,loading,isDemo,tokenPassed]);
 
