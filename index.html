@@ -192,15 +192,19 @@ const sb = {
     },
     async _req(method, body) {
       try {
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), 15000);
         const res = await fetch(this._buildUrl(method), {
           method,
           headers: this._headers(),
-          body: body ? JSON.stringify(body) : undefined
+          body: body ? JSON.stringify(body) : undefined,
+          signal: controller.signal
         });
+        clearTimeout(timer);
         if (!res.ok) { const err = await res.text(); return { data: null, error: err }; }
         const data = await res.json();
         return { data, error: null };
-      } catch(e) { return { data: null, error: e.message }; }
+      } catch(e) { return { data: null, error: e.name==='AbortError'?'Timeout: koneksi ke server terlalu lama':e.message }; }
     },
     async get() { return this._req('GET'); },
     async insert(row) {
@@ -1031,8 +1035,8 @@ const DEMO_ADMIN_DATA = {
 // ================================================================
 function LoadingScreen({msg}) {
   return h('div',{style:{minHeight:'100vh',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',background:'var(--bg-base)',gap:'16px'}},
-    h('div',{style:{width:'48px',height:'48px',border:'3px solid rgba(0,240,255,.2)',borderTop:'3px solid #00f0ff',borderRadius:'50%',animation:'spin-slow .7s linear infinite'}}),
-    h('p',{style:{fontFamily:MONO,color:'var(--accent-dim)',fontSize:'12px',letterSpacing:'0.2em'}},msg||'Memuat data...')
+    h('div',{style:{width:'48px',height:'48px',border:'3px solid var(--accent-dim)',borderTop:'3px solid var(--accent)',borderRadius:'50%',animation:'spin-slow .7s linear infinite'}}),
+    h('p',{style:{fontFamily:MONO,color:'var(--text-muted)',fontSize:'12px',letterSpacing:'0.2em'}},msg||'Memuat data...')
   );
 }
 
@@ -3464,11 +3468,17 @@ function AdminCBT({students,settings,isSuperAdmin}) {
       const e=await DB.getCbtExams();
       setExams(e||[]);
     } catch(err) {
-      setError('Gagal memuat data ujian: '+err.message);
+      setError('Gagal memuat data: '+err.message+'. Periksa koneksi internet.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   },[]);
-  useEffect(()=>{reload();},[reload]);
+  useEffect(()=>{
+    reload();
+    // Safety net: force loading=false after 20s to prevent infinite blank
+    const t=setTimeout(()=>setLoading(false),20000);
+    return()=>clearTimeout(t);
+  },[reload]);
 
   if(loading) return h(LoadingScreen,{msg:'Memuat data ujian...'});
   if(error) return h('div',{style:{padding:'40px',textAlign:'center',color:'#f87171',fontFamily:MONO,fontSize:'12px'}},
@@ -3957,9 +3967,15 @@ function StudentCBT({student,settings,isDemo}) {
 
   const reload=async()=>{
     setLoading(true);
-    const all=await DB.getCbtExams();
-    const avail=all.filter(e=>e.status==='active'&&(e.kelas==='Semua Kelas'||e.kelas===student.kelas));
-    setExams(avail);setLoading(false);
+    try {
+      const all=await DB.getCbtExams();
+      const avail=all.filter(e=>e.status==='active'&&(e.kelas==='Semua Kelas'||e.kelas===student.kelas));
+      setExams(avail);
+    } catch(e) {
+      console.error('Gagal load ujian:',e);
+    } finally {
+      setLoading(false);
+    }
   };
   useEffect(()=>{if(!isDemo)reload();else{setExams([{id:'demo-exam',title:'Ujian Demo Matematika',description:'Ini adalah ujian demonstrasi',kelas:student.kelas,mapel:'Matematika',duration_minutes:30,status:'active',shuffle_questions:true,shuffle_answers:true}]);setLoading(false);}},[]);
 
