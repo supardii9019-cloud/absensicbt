@@ -5103,6 +5103,7 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
   const[anns,setAnns]=useState([]);
   const[settings,setSettings]=useState(null);
   const[holidays,setHolidays]=useState([]);
+  const[loadError,setLoadError]=useState(null);
 
   const reload=useCallback(async()=>{
     if(isDemo){
@@ -5119,6 +5120,7 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
       setStudents(stu);setRecords(rec);setLeaves(lv);setAnns(an);setSettings(set_);setHolidays(hol);
     } catch(e) {
       console.error('AdminPanel reload error:',e);
+      setLoadError(e.message||'Gagal memuat data. Periksa koneksi internet.');
     } finally {
       setLoading(false);
     }
@@ -6150,15 +6152,17 @@ function showInstallModal(){
 
 
 </script>
-</body>
-</html
+
+<script>
   // Dengarkan pesan dari SW (misal CBT cache cleared)
   navigator.serviceWorker.addEventListener('message', function(event){
     if(event.data && event.data.type === 'CBT_CACHE_CLEARED'){
-      // Hapus semua cache soal CBT di sessionStorage tab ini
       var keys = Object.keys(sessionStorage);
       keys.forEach(function(k){ if(k.startsWith('cbt_q_')) sessionStorage.removeItem(k); });
       console.log('[AbsensiKu] CBT cache di sessionStorage berhasil dihapus');
     }
   });
->
+</script>
+
+</body>
+</html>
