@@ -4073,7 +4073,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   const [answers,setAnswers]=useState({});
   const [curQ,setCurQ]=useState(0);
   const [timeLeft,setTimeLeft]=useState(null);
-  const [loading,setLoading]=useState(true);
+  const [loading,setLoading]=useState(true); // akan di-reset ke true saat tokenPassed
   const [session,setSession]=useState(null);
   const [violations,setViolations]=useState([]);
   const [photos,setPhotos]=useState([]);
@@ -4085,8 +4085,6 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   const [tokenInput,setTokenInput]=useState('');
   const [tokenPassed,setTokenPassed]=useState(!exam.token||isDemo);
   const [tokenError,setTokenError]=useState('');
-  // Jika ada token, jangan tampilkan loading sebelum token diisi
-  if(exam.token&&!isDemo&&!tokenPassed&&loading) setLoading(false);
   const videoRef=useRef(null);
   const canvasRef=useRef(null);
   const sessionRef=useRef(null);
@@ -4094,6 +4092,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   // ── Init ──────────────────────────────────────────────────────────
   useEffect(()=>{
     if(!tokenPassed) return; // Tunggu token diverifikasi dulu
+    setLoading(true); // Reset loading true setiap kali token diverifikasi
     (async()=>{
       // Spread spike: delay acak 0-2 detik agar 500 siswa tidak hit DB serentak
       if(!isDemo){
@@ -4102,7 +4101,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       }
       // Coba re-submit data pending dari sesi sebelumnya
       if(!isDemo) resubmitPending().catch(()=>{});
-      let qs;
+      let qs; let ses;
       if(isDemo){
         qs=[
           {id:'dq1',type:'pg',question:'Berapakah hasil dari 2 + 2?',options:['3','4','5','6','7'],correct_answer:'B',score:1,order_num:1},
@@ -4153,6 +4152,26 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
             status:'ongoing',device_id:student.deviceId||'unknown'};
           await withRetry(()=>DB.saveCbtSession(ses),3,600);
         }
+        // Shuffle soal & jawaban SEBELUM setQuestions
+        if(exam.shuffle_questions) qs=shuffle(qs);
+        if(exam.shuffle_answers) qs=qs.map(q=>{
+          if(q.type!=='pg'&&q.type!=='mcma') return q;
+          const LTRS=['A','B','C','D','E'];
+          const pairs=(q.options||[]).map((txt,i)=>({ltr:LTRS[i],txt}));
+          const shuffled=shuffle(pairs);
+          const newOpts=shuffled.map(p=>p.txt);
+          if(q.type==='pg'){
+            const correctTxt=pairs.find(p=>p.ltr===q.correct_answer)?.txt||'';
+            const newCorrectIdx=shuffled.findIndex(p=>p.txt===correctTxt);
+            return {...q,options:newOpts,correct_answer:LTRS[newCorrectIdx]||'A'};
+          } else {
+            const corrArr=Array.isArray(q.correct_answer)?q.correct_answer:[];
+            const correctTxts=corrArr.map(ltr=>pairs.find(p=>p.ltr===ltr)?.txt||'');
+            const newCorrectArr=shuffled.map((p,i)=>correctTxts.includes(p.txt)?LTRS[i]:null).filter(Boolean);
+            return {...q,options:newOpts,correct_answer:newCorrectArr};
+          }
+        });
+        setQuestions(qs);
         setSession(ses);
         sessionRef.current=ses;
         setTimeLeft(exam.duration_minutes*60);
