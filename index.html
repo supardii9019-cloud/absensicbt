@@ -4232,6 +4232,12 @@ function CbtExamCard({exam,student,isDemo,onStart}) {
         )
       ),
       checking?h('div',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-muted)'}},'...'):
+      status==='disqualified'?
+        h('div',{style:{textAlign:'center'}},
+          h('p',{style:{fontSize:'24px',marginBottom:'4px'}},'🚫'),
+          h('p',{style:{fontFamily:ORB,fontSize:'9px',color:'#f87171',letterSpacing:'.1em'}},'DIDISKUALIFIKASI'),
+          h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'rgba(248,113,113,.6)',marginTop:'2px'}},'Hubungi guru/admin')
+        ):
       status==='submitted'?
         h('div',{style:{textAlign:'center'}},
           exam.show_score!==false&&session.score!=null
@@ -4489,7 +4495,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   },[]);
 
   // ── Submit ────────────────────────────────────────────────────────
-  const handleSubmit=useCallback(async(auto=false)=>{
+  const handleSubmit=useCallback(async(auto=false,disqualified=false)=>{
     if(submitted) return;
     setSubmitted(true);
     if(document.exitFullscreen&&document.fullscreenElement) document.exitFullscreen().catch(()=>{});
@@ -4518,7 +4524,9 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       const hasEssay=finalQs.some(q=>q.type==='essay');
       const score=maxScore>0&&!hasEssay?Math.round(total*10)/10:null;
       const scoreMax=maxScore>0&&!hasEssay?maxScore:null;
-      await queueSubmit({...sessionRef.current,end_time:new Date().toISOString(),status:'submitted',score,score_max:scoreMax,answers:finalAns});
+      // Status 'disqualified' jika dikeluarkan karena nyontek, 'submitted' jika normal
+      const finalStatus=disqualified?'disqualified':'submitted';
+      await queueSubmit({...sessionRef.current,end_time:new Date().toISOString(),status:finalStatus,score,score_max:scoreMax,answers:finalAns});
     }
     if(auto) setTimeout(()=>onFinish(),2500);
   },[submitted,camStream,isDemo,onFinish]);
@@ -4533,7 +4541,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       if(sessionRef.current&&!isDemo) DB.saveCbtSession({...sessionRef.current,violations:nv}).catch(()=>{});
       if(nv.length>=MAX_VIOLATIONS){
         setShowWarning('🚫 Terlalu banyak pelanggaran! Ujian dihentikan paksa.');
-        setTimeout(()=>handleSubmit(true),1500);
+        setTimeout(()=>handleSubmit(true,true),1500);
       }
       return nv;
     });
@@ -4627,16 +4635,17 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     let correct=0,total=0;
     const finalAnswers=sessionRef.current?.answers||answers;
     pgQ.forEach(q=>{total+=q.score||1;if(q.type==='mcma'){const cA=Array.isArray(q.correct_answer)?q.correct_answer:[];const sA=Array.isArray(finalAnswers[q.id])?finalAnswers[q.id]:[];if(cA.length>0){const pi=(q.score||1)/cA.length;let pts=0;cA.forEach(c=>{if(sA.includes(c))pts+=pi;});sA.forEach(s=>{if(!cA.includes(s))pts-=pi;});correct+=Math.max(0,Math.round(pts*10)/10);}}else{if(finalAnswers[q.id]===q.correct_answer)correct+=q.score||1;}});
-    const rawScore=rawTotal>0?Math.round(correct*10)/10:(savedScore||0);
-    const displayTotal=rawTotal>0?rawTotal:(savedScoreMax||0);
+    const rawScore=total>0?Math.round(correct*10)/10:(savedScore||0);
+    const displayTotal=total>0?total:(savedScoreMax||0);
     const pct=displayTotal>0?Math.round((rawScore/displayTotal)*100):(savedScore!=null&&savedScoreMax?Math.round((savedScore/savedScoreMax)*100):null);
     const hasEssay=essQ.length>0;
     const scoreColor=pct!=null?(pct>=80?'#00ff88':pct>=60?'#facc15':'#f87171'):'#00ff88';
     return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}},
       h('div',{style:{textAlign:'center',maxWidth:'400px'}},
         h('div',{style:{fontSize:'64px',marginBottom:'16px'}},'🎉'),
-        h('h2',{style:{fontFamily:ORB,fontSize:'20px',color:'var(--accent)',letterSpacing:'.1em',marginBottom:'8px'}},'UJIAN SELESAI'),
-        exam.show_score!==false&&rawTotal>0&&h('div',{style:{margin:'20px 0'}},
+        h('h2',{style:{fontFamily:ORB,fontSize:'20px',color:'var(--accent)',letterSpacing:'.1em',marginBottom:'8px'}},violations.length>=3?'UJIAN DIHENTIKAN':'UJIAN SELESAI'),
+        violations.length>=3&&h('p',{style:{fontFamily:MONO,fontSize:'11px',color:'#f87171',marginBottom:'8px',padding:'8px 12px',borderRadius:'8px',background:'rgba(239,68,68,.08)',border:'1px solid rgba(239,68,68,.2)'}},'🚫 Anda didiskualifikasi karena '+violations.length+' pelanggaran. Hubungi guru/admin untuk reset akses.'),
+        exam.show_score!==false&&total>0&&h('div',{style:{margin:'20px 0'}},
           h('p',{style:{fontFamily:ORB,fontSize:'52px',fontWeight:'bold',color:scoreColor,lineHeight:1}},rawScore+(rawScore!==Math.floor(rawScore)?'':'')+''),
           h('p',{style:{fontFamily:MONO,fontSize:'13px',color:'var(--text-muted)',marginTop:'4px'}},displayTotal>0?'dari '+displayTotal+' poin':''),
           h('div',{style:{marginTop:'10px',padding:'6px 16px',borderRadius:'20px',background:scoreColor+'18',border:'1px solid '+scoreColor+'40',display:'inline-block'}},
@@ -4852,9 +4861,15 @@ function WaliCBT({teacher, students, isDemo,onBack}) {
                 h('p',{style:{fontFamily:MONO,fontSize:'12px',color:'var(--text-primary)'}},s.student_name),
                 h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)'}},s.student_code+' · '+(s.violations&&s.violations.length>0?'⚠️ '+s.violations.length+' pelanggaran':'✅ bersih'))
               ),
-              h('div',{style:{textAlign:'right'}},
-                pct!=null?h('p',{style:{fontFamily:ORB,fontSize:'20px',fontWeight:'bold',color:scoreColor(pct)}},pct):h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-muted)'}},s.status==='ongoing'?'⏳ Sedang':'Essay'),
-                h('p',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--text-dim)'}},s.status==='submitted'?'Selesai':s.status)
+              h('div',{style:{textAlign:'right',display:'flex',flexDirection:'column',alignItems:'flex-end',gap:'4px'}},
+                s.status==='disqualified'
+                  ?h('div',null,
+                      h('p',{style:{fontFamily:ORB,fontSize:'11px',color:'#f87171'}},'🚫 DISKUAL.'),
+                      h('button',{onClick:async e=>{e.stopPropagation();if(confirm('Reset akses ujian '+s.student_name+'?')){await DB.saveCbtSession({...s,status:'ongoing',violations:[]});const s2=await DB.getCbtSessions(selExam);setSessions(s2.filter(ss=>ss.kelas===teacher.kelas));}},
+                        style:{marginTop:'4px',padding:'3px 8px',borderRadius:'6px',fontSize:'8px',fontFamily:MONO,color:'#facc15',background:'rgba(250,204,21,.1)',border:'1px solid rgba(250,204,21,.3)',cursor:'pointer'}},'🔄 Reset')
+                    )
+                  :pct!=null?h('p',{style:{fontFamily:ORB,fontSize:'20px',fontWeight:'bold',color:scoreColor(pct)}},pct):h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--text-muted)'}},s.status==='ongoing'?'⏳ Sedang':'Essay'),
+                s.status!=='disqualified'&&h('p',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--text-dim)'}},s.status==='submitted'?'Selesai':s.status)
               )
             );
           })
