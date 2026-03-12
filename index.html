@@ -28,7 +28,7 @@
 <noscript><link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"></noscript>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;scrollbar-width:thin;scrollbar-color:var(--accent-dim) transparent}
-body{background:var(--bg-base);font-family:'Inter',system-ui,-apple-system,sans-serif;overflow-x:hidden;color:var(--text-primary);touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
+html,body{overscroll-behavior:none;overscroll-behavior-y:none}body{background:var(--bg-base);font-family:'Inter',system-ui,-apple-system,sans-serif;overflow-x:hidden;color:var(--text-primary);touch-action:pan-x pan-y;-webkit-text-size-adjust:100%;text-size-adjust:100%}
 *{-webkit-tap-highlight-color:transparent;box-sizing:border-box}
 input,textarea,select{font-size:16px!important}
 @keyframes pulse-glow{0%,100%{box-shadow:0 0 20px rgba(0,240,255,.3)}50%{box-shadow:0 0 40px rgba(0,240,255,.6)}}
@@ -42,6 +42,7 @@ input,textarea,select{font-size:16px!important}
 .di:focus{border-color:var(--accent);box-shadow:0 0 20px var(--accent-bg)}
 .di::placeholder{color:var(--text-dim)}
 input[type=date],select{color-scheme:light dark}
+#root{overscroll-behavior:none;height:100%;min-height:100vh}
 </style>
 <style id="theme-vars">
 :root {
@@ -463,7 +464,7 @@ const DB = {
       student_name:s.student_name, student_code:s.student_code, kelas:s.kelas,
       start_time:s.start_time, end_time:s.end_time||null,
       answers:s.answers||{}, photos:s.photos||[], violations:s.violations||[],
-      score:s.score||null, status:s.status||'ongoing', device_id:s.device_id||null
+      score:s.score||null, score_max:s.score_max||null, status:s.status||'ongoing', device_id:s.device_id||null
     });
   },
 };
@@ -4053,10 +4054,13 @@ function CbtExamCard({exam,student,isDemo,onStart}) {
       status==='submitted'?
         h('div',{style:{textAlign:'center'}},
           exam.show_score!==false&&session.score!=null
-            ?h('p',{style:{fontFamily:ORB,fontSize:'22px',color:'#00ff88',fontWeight:'bold'}},session.score+'%')
+            ?h('div',null,
+              h('p',{style:{fontFamily:ORB,fontSize:'20px',color:'#00ff88',fontWeight:'bold',lineHeight:1}},session.score+(session.score_max?'/'+session.score_max:'')),
+              session.score_max&&h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'#00ff88',opacity:.7,marginTop:'2px'}},'POIN')
+            )
             :h('p',{style:{fontFamily:ORB,fontSize:'22px',color:'#00ff88',fontWeight:'bold'}},'✓'),
-          h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'#00ff88',letterSpacing:'.15em'}},
-            exam.show_score!==false&&session.score!=null?'NILAI':'SELESAI')
+          !session.score_max&&h('p',{style:{fontFamily:MONO,fontSize:'8px',color:'#00ff88',letterSpacing:'.15em'}},
+            exam.show_score!==false&&session.score!=null?'':'SELESAI')
         ):
       status==='ongoing'?
         h('button',{onClick:onStart,style:{padding:'12px 20px',borderRadius:'12px',background:'rgba(251,146,60,.1)',border:'1px solid rgba(251,146,60,.3)',color:'#fb923c',cursor:'pointer',fontFamily:ORB,fontSize:'10px',fontWeight:'bold',letterSpacing:'.05em',whiteSpace:'nowrap'}},'▶ LANJUTKAN'):
@@ -4217,15 +4221,19 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
 
   // ── Kamera ────────────────────────────────────────────────────────
   useEffect(()=>{
-    if(loading) return;
+    if(loading||!tokenPassed||submitted) return;
+    let localStream=null;
     navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false})
       .then(stream=>{
+        localStream=stream;
         setCamStream(stream);
         if(videoRef.current){videoRef.current.srcObject=stream;videoRef.current.play();}
       })
       .catch(e=>{setCamError('Kamera tidak dapat diakses: '+e.message);});
-    return()=>{};
-  },[loading]);
+    return()=>{
+      if(localStream) localStream.getTracks().forEach(t=>t.stop());
+    };
+  },[loading,tokenPassed,submitted]);
 
   // Auto foto tiap 30 detik
   useEffect(()=>{
@@ -4234,7 +4242,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     const jitter=25000+Math.floor(Math.random()*10000);
     const iv=setInterval(()=>capturePhoto(false),jitter);
     return()=>clearInterval(iv);
-  },[camStream,submitted]);
+  },[camStream,submitted,capturePhoto]);
 
   const capturePhoto=useCallback((manual=false)=>{
     if(!canvasRef.current||!videoRef.current) return null;
@@ -4268,9 +4276,34 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     return()=>clearInterval(iv);
   },[timeLeft,submitted]);
 
+  // ── Blokir back button & close PWA saat ujian ───────────────────
+  useEffect(()=>{
+    if(submitted||loading||!tokenPassed) return;
+    // Push state dummy agar back button tidak keluar dari ujian
+    history.pushState(null,'',window.location.href);
+    const handlePop=()=>{
+      // Setiap kali back ditekan, push lagi supaya tetap di sini
+      history.pushState(null,'',window.location.href);
+      setShowWarning('⚠️ Tombol kembali dinonaktifkan selama ujian!');
+      setTimeout(()=>setShowWarning(null),3000);
+    };
+    // Blokir close/refresh tab/PWA
+    const handleBeforeUnload=(e)=>{
+      e.preventDefault();
+      e.returnValue='Ujian sedang berlangsung. Yakin ingin keluar?';
+      return e.returnValue;
+    };
+    window.addEventListener('popstate',handlePop);
+    window.addEventListener('beforeunload',handleBeforeUnload);
+    return()=>{
+      window.removeEventListener('popstate',handlePop);
+      window.removeEventListener('beforeunload',handleBeforeUnload);
+    };
+  },[submitted,loading,tokenPassed]);
+
   // ── Anti-nyontek: deteksi pindah tab ─────────────────────────────
   useEffect(()=>{
-    if(submitted) return;
+    if(submitted||loading||!tokenPassed) return;
     const handleVis=()=>{
       if(document.hidden){
         const v={type:'Tab switch / keluar tab',time:new Date().toISOString()};
@@ -4285,7 +4318,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     };
     document.addEventListener('visibilitychange',handleVis);
     return()=>document.removeEventListener('visibilitychange',handleVis);
-  },[submitted,isDemo]);
+  },[submitted,loading,isDemo,tokenPassed]);
 
   // ── Anti-nyontek: fullscreen ──────────────────────────────────────
   useEffect(()=>{
@@ -4311,7 +4344,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       document.removeEventListener('fullscreenchange',handleFsChange);
       if(document.exitFullscreen&&document.fullscreenElement) document.exitFullscreen().catch(()=>{});
     };
-  },[submitted,loading,isDemo]);
+  },[submitted,loading,isDemo,tokenPassed]);
 
   // ── Jawab soal ────────────────────────────────────────────────────
   const answer=useCallback((qId,val)=>{
@@ -4350,9 +4383,10 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
         }
       });
       const hasEssay=questions.some(q=>q.type==='essay');
-      const score=maxScore>0&&!hasEssay?Math.round((total/maxScore)*100):null;
+      const score=maxScore>0&&!hasEssay?Math.round(total*10)/10:null;
+      const scoreMax=maxScore>0&&!hasEssay?maxScore:null;
       // Pakai queue + retry untuk toleransi lonjakan bersamaan
-      await queueSubmit({...sessionRef.current,end_time:new Date().toISOString(),status:'submitted',score,answers:finalAns});
+      await queueSubmit({...sessionRef.current,end_time:new Date().toISOString(),status:'submitted',score,score_max:scoreMax,answers:finalAns});
     }
   },[submitted,questions,answers,camStream,isDemo]);
 
@@ -4397,13 +4431,22 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     const essQ=questions.filter(q=>q.type==='essay');
     let correct=0,total=0;
     pgQ.forEach(q=>{total+=q.score||1;if(q.type==='mcma'){const cA=Array.isArray(q.correct_answer)?q.correct_answer:[];const sA=Array.isArray(answers[q.id])?answers[q.id]:[];if(cA.length>0){const pi=(q.score||1)/cA.length;let pts=0;cA.forEach(c=>{if(sA.includes(c))pts+=pi;});sA.forEach(s=>{if(!cA.includes(s))pts-=pi;});correct+=Math.max(0,Math.round(pts*10)/10);}}else{if(answers[q.id]===q.correct_answer)correct+=q.score||1;}});
-    const pct=pgQ.length>0&&total>0?Math.round((correct/total)*100):null;
+    const rawScore=Math.round(correct*10)/10;
+    const rawTotal=total;
+    const pct=rawTotal>0?Math.round((rawScore/rawTotal)*100):null;
     const hasEssay=essQ.length>0;
+    const scoreColor=pct!=null?(pct>=80?'#00ff88':pct>=60?'#facc15':'#f87171'):'#00ff88';
     return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}},
       h('div',{style:{textAlign:'center',maxWidth:'400px'}},
         h('div',{style:{fontSize:'64px',marginBottom:'16px'}},'🎉'),
         h('h2',{style:{fontFamily:ORB,fontSize:'20px',color:'var(--accent)',letterSpacing:'.1em',marginBottom:'8px'}},'UJIAN SELESAI'),
-        exam.show_score!==false&&pct!=null&&h('p',{style:{fontFamily:ORB,fontSize:'48px',fontWeight:'bold',color:pct>=80?'#00ff88':pct>=60?'#facc15':'#f87171',margin:'16px 0'}},pct+'%'),
+        exam.show_score!==false&&rawTotal>0&&h('div',{style:{margin:'20px 0'}},
+          h('p',{style:{fontFamily:ORB,fontSize:'52px',fontWeight:'bold',color:scoreColor,lineHeight:1}},rawScore+(rawScore!==Math.floor(rawScore)?'':'')+''),
+          h('p',{style:{fontFamily:MONO,fontSize:'13px',color:'var(--text-muted)',marginTop:'4px'}},'dari '+rawTotal+' poin'),
+          h('div',{style:{marginTop:'10px',padding:'6px 16px',borderRadius:'20px',background:scoreColor+'18',border:'1px solid '+scoreColor+'40',display:'inline-block'}},
+            h('span',{style:{fontFamily:ORB,fontSize:'12px',color:scoreColor}},pct+'% — '+(pct>=80?'Sangat Baik':pct>=70?'Baik':pct>=60?'Cukup':'Perlu Belajar Lagi'))
+          )
+        ),
         exam.show_score===false&&h('p',{style:{fontFamily:MONO,fontSize:'12px',color:'var(--text-muted)',margin:'16px 0',padding:'12px',borderRadius:'12px',background:'var(--bg-panel)',border:'1px solid var(--border)'}},'📋 Nilai akan diumumkan oleh guru/admin'),
         hasEssay&&h('p',{style:{fontFamily:MONO,fontSize:'11px',color:'var(--text-muted)',marginBottom:'8px'}},'*Soal essay menunggu penilaian guru'),
         violations.length>0&&h('p',{style:{fontFamily:MONO,fontSize:'10px',color:'#f87171',marginBottom:'8px'}},'⚠️ '+violations.length+' pelanggaran tercatat'),
@@ -5718,6 +5761,34 @@ function App() {
   if(session.role==='mapel')return h(GuruMapelPanel,{teacher:session.teacher,onLogout:()=>setSession(null),isDemo:session.isDemo||false});
   return h(StudentPanel,{student:session.student,onLogout:()=>setSession(null),isDemo:session.isDemo||false});
 }
+
+// ── Blokir pull-to-refresh di semua browser ──────────────────────
+(function(){
+  let lastY=0;
+  document.addEventListener('touchstart',function(e){
+    lastY=e.touches[0].clientY;
+  },{passive:true});
+  document.addEventListener('touchmove',function(e){
+    const y=e.touches[0].clientY;
+    const el=e.target;
+    // Cari ancestor yang bisa scroll
+    let scrollable=el;
+    while(scrollable&&scrollable!==document.body){
+      const st=window.getComputedStyle(scrollable);
+      const overflow=st.overflowY||st.overflow;
+      if(overflow==='scroll'||overflow==='auto'){
+        // Biarkan scroll normal di dalam elemen scrollable
+        if(scrollable.scrollTop===0&&y>lastY){
+          e.preventDefault(); // Block pull-to-refresh
+        }
+        return;
+      }
+      scrollable=scrollable.parentElement;
+    }
+    // Tidak ada scrollable ancestor → blokir semua pull ke bawah
+    if(y>lastY) e.preventDefault();
+  },{passive:false});
+})();
 
 ReactDOM.createRoot(document.getElementById('root')).render(h(ErrorBoundary,null,h(App)));
 </script>
