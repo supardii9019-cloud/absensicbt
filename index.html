@@ -5389,13 +5389,13 @@ function StudentPanel({student,onLogout,isDemo=false}) {
     await reload();
   };
 
-  if(loading||!settings)return h(LoadingScreen,{msg:'Memuat data...'});
-  const nav=[{id:'home',label:'Beranda',icon:'\uD83C\uDFE0'},{id:'cbt',label:'Ujian',icon:'\uD83D\uDCDD'},{id:'history',label:'Riwayat',icon:'\uD83D\uDCDC'},{id:'kartu',label:'Kartu',icon:'\uD83C\uDD94'},{id:'leave',label:'Izin',icon:'\uD83D\uDCDD'},{id:'profile',label:'Profil',icon:'\uD83D\uDC64'}];
   // ── FULLSCREEN EXAM MODE: tidak ada header/nav/sidebar sama sekali ──
   if(activeExam) return h(CbtExamRunner,{
     exam:activeExam,student,isDemo,
     onFinish:()=>{setActiveExam(null);setPage('cbt');reload();}
   });
+  if(loading||!settings)return h(LoadingScreen,{msg:'Memuat data...'});
+  const nav=[{id:'home',label:'Beranda',icon:'\uD83C\uDFE0'},{id:'cbt',label:'Ujian',icon:'\uD83D\uDCDD'},{id:'history',label:'Riwayat',icon:'\uD83D\uDCDC'},{id:'kartu',label:'Kartu',icon:'\uD83C\uDD94'},{id:'leave',label:'Izin',icon:'\uD83D\uDCDD'},{id:'profile',label:'Profil',icon:'\uD83D\uDC64'}];
 
   if(isDesktop){
     const stu=student;
