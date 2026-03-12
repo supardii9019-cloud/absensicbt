@@ -217,6 +217,7 @@ const sb = {
         .catch(e => ({data:null,error:e.message}));
     },
     async update(row) {
+      if(this._filters.length===0) return {data:null,error:'SAFETY: update tanpa filter ditolak'};
       let qs = this._filters.join('&');
       const fullUrl = `${SUPABASE_URL}/rest/v1/${this._table}${qs?'?'+qs:''}`;
       return fetch(fullUrl, {
@@ -227,6 +228,7 @@ const sb = {
         .catch(e => ({data:null,error:e.message}));
     },
     async delete() {
+      if(this._filters.length===0) return {data:null,error:'SAFETY: delete tanpa filter ditolak'};
       let qs = this._filters.join('&');
       const fullUrl = `${SUPABASE_URL}/rest/v1/${this._table}${qs?'?'+qs:''}`;
       return fetch(fullUrl, {
@@ -254,8 +256,8 @@ const fmtDate = d => d.toLocaleDateString('id-ID',{weekday:'long',year:'numeric'
 const fmtShort = s => { try { return new Date(s).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); } catch(e) { return s; }};
 const todayStr = () => new Date().toISOString().split('T')[0];
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
-const isLate = (ci, ss) => { const[h1,m1]=ci.split(':').map(Number); const[h2,m2]=ss.split(':').map(Number); return h1>h2||(h1===h2&&m1>m2); };
-const haversine = (a,b,c,d) => { const R=6371000,dL=(c-a)*Math.PI/180,dN=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)**2; return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)); };
+const isLate = (ci, ss) => { if(!ci||!ss) return false; try{const[h1,m1]=ci.split(':').map(Number);const[h2,m2]=ss.split(':').map(Number);return h1>h2||(h1===h2&&m1>m2);}catch(e){return false;} };
+const haversine = (a,b,c,d) => { if(a==null||b==null||c==null||d==null)return null;const R=6371000,dL=(c-a)*Math.PI/180,dN=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)**2; return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)); };
 const fmtDist = m => m<1000 ? `${Math.round(m)}m` : `${(m/1000).toFixed(1)}km`;
 const fmtCoords = l => `${l.lat.toFixed(6)}, ${l.lng.toFixed(6)}`;
 const fmtAgo = ts => { const d=Date.now()-new Date(ts).getTime(),m=Math.floor(d/60000); if(m<1)return'Baru saja'; if(m<60)return`${m} menit lalu`; const hh=Math.floor(m/60); if(hh<24)return`${hh} jam lalu`; return`${Math.floor(hh/24)} hari lalu`; };
@@ -270,10 +272,12 @@ const getGeo = () => new Promise(res => {
 });
 
 function genDevice() {
-  const cv=document.createElement('canvas'),ctx=cv.getContext('2d');cv.width=200;cv.height=50;
+  let cvDataUrl='data:';
+  try{const cv=document.createElement('canvas'),ctx=cv.getContext('2d');if(ctx){cv.width=200;cv.height=50;
   ctx.textBaseline='top';ctx.font='14px Arial';ctx.fillStyle='#f60';ctx.fillRect(125,1,62,20);
   ctx.fillStyle='#069';ctx.fillText('DeviceFingerprint',2,15);ctx.fillStyle='rgba(102,204,0,0.7)';ctx.fillText('AbsenKu2024',4,35);
-  const raw=[cv.toDataURL(),navigator.userAgent,navigator.language,screen.width+'x'+screen.height,screen.colorDepth,new Date().getTimezoneOffset(),navigator.hardwareConcurrency||0,navigator.deviceMemory||0,navigator.maxTouchPoints||0,navigator.platform||''].join('|');
+  cvDataUrl=cv.toDataURL();}}catch(e){}
+  const raw=[cvDataUrl,navigator.userAgent,navigator.language,screen.width+'x'+screen.height,screen.colorDepth,new Date().getTimezoneOffset(),navigator.hardwareConcurrency||0,navigator.deviceMemory||0,navigator.maxTouchPoints||0,navigator.platform||''].join('|');
   let hash=0; for(let i=0;i<raw.length;i++){hash=((hash<<5)-hash)+raw.charCodeAt(i);hash=hash&hash;}
   const id='DVC-'+Math.abs(hash).toString(36).toUpperCase().padStart(8,'0').slice(0,8);
   const ua=navigator.userAgent;
@@ -290,7 +294,7 @@ const DB = {
     const {data} = await sb.from('school_settings').eq('id','1').get();
     if(!data||!data[0]) return {schoolName:'SMA Negeri 1 Jakarta',schoolStart:'07:00',schoolEnd:'15:00',deviceLock:true,locationName:'SMA Negeri 1',locationLat:-6.2088,locationLng:106.8456,locationRadius:200};
     const r=data[0];
-    return {schoolName:r.school_name,schoolStart:r.school_start.slice(0,5),schoolEnd:r.school_end.slice(0,5),deviceLock:r.device_lock,locationName:r.location_name,locationLat:r.location_lat,locationLng:r.location_lng,locationRadius:r.location_radius,fonnteToken:r.fonnte_token||'',fonnteDevice:r.fonnte_device||''};
+    return {schoolName:r.school_name,schoolStart:(r.school_start||'07:00').slice(0,5),schoolEnd:(r.school_end||'15:00').slice(0,5),deviceLock:r.device_lock,locationName:r.location_name,locationLat:r.location_lat,locationLng:r.location_lng,locationRadius:r.location_radius,fonnteToken:r.fonnte_token||'',fonnteDevice:r.fonnte_device||''};
   },
   async saveSettings(s) {
     await sb.from('school_settings').eq('id','1').update({school_name:s.schoolName,school_start:s.schoolStart,school_end:s.schoolEnd,device_lock:s.deviceLock,location_name:s.locationName,location_lat:s.locationLat,location_lng:s.locationLng,location_radius:s.locationRadius,fonnte_token:s.fonnteToken||'',fonnte_device:s.fonnteDevice||'',updated_at:new Date().toISOString()});
@@ -318,7 +322,8 @@ const DB = {
     const row = {id:rec.id,student_id:rec.studentId,student_name:rec.studentName,student_code:rec.studentCode,date:rec.date,clock_in:rec.clockIn||null,clock_in_status:rec.clockInStatus||null,clock_out:rec.clockOut||null,clock_out_status:rec.clockOutStatus||null,clock_in_photo:rec.clockInPhoto||null,clock_out_photo:rec.clockOutPhoto||null,clock_in_location:rec.clockInLocation||null,clock_out_location:rec.clockOutLocation||null,clock_in_distance:rec.clockInDistance!=null?rec.clockInDistance:null,clock_out_distance:rec.clockOutDistance!=null?rec.clockOutDistance:null,device_id:rec.deviceId||null};
     return sb.from('attendance_records').upsert(row);
   },
-  async clearRecords() {
+  async clearRecords(confirmed=false) {
+    if(!confirmed) return {error:'Konfirmasi diperlukan'};
     return fetch(`${SUPABASE_URL}/rest/v1/attendance_records?id=neq.null_placeholder`, {
       method:'DELETE', headers:{'apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'return=minimal'}
     });
@@ -1084,8 +1089,7 @@ function NotifBell({targetId}) {
   const[open,setOpen]=useState(false);
   const[notifs,setNotifs]=useState([]);
   const reload = useCallback(async()=>{
-    const data = await DB.getNotifications(targetId);
-    setNotifs(data);
+    try{const data=await DB.getNotifications(targetId);setNotifs(data||[]);}catch(e){}
   },[targetId]);
   useEffect(()=>{reload();const iv=setInterval(reload,5000);return()=>clearInterval(iv);},[reload]);
   const unread=notifs.filter(n=>!n.read).length;
@@ -1138,9 +1142,10 @@ function CameraView({action,school,student,onCapture,onClose}) {
   },[onClose]);
   useEffect(()=>{startCam(facing);return()=>{if(streamRef.current)streamRef.current.getTracks().forEach(t=>t.stop());};},[facing,startCam]);
   useEffect(()=>{
-    const doGeo=()=>getGeo().then(l=>{if(l){setLoc(l);setGpsStatus('success');setDist(haversine(l.lat,l.lng,school.locationLat,school.locationLng));}else setGpsStatus('error');});
+    if(!school||school.locationLat==null||school.locationLng==null){setGpsStatus('error');return;}
+    const doGeo=()=>getGeo().then(l=>{if(l){setLoc(l);setGpsStatus('success');const d=haversine(l.lat,l.lng,school.locationLat,school.locationLng);setDist(isNaN(d)?null:d);}else setGpsStatus('error');}).catch(()=>setGpsStatus('error'));
     doGeo();const iv=setInterval(doGeo,10000);return()=>clearInterval(iv);
-  },[school.locationLat,school.locationLng]);
+  },[school&&school.locationLat,school&&school.locationLng]);
   const takePhoto=useCallback(()=>{
     if(!videoRef.current||!canvasRef.current)return;
     const v=videoRef.current,c=canvasRef.current; c.width=v.videoWidth; c.height=v.videoHeight;
@@ -1397,12 +1402,14 @@ function LoginScreen({onLogin}) {
     if(username==='demo.admin'&&password==='demo123'){
       onLogin({role:'admin',isDemo:true,adminData:{role:'superadmin',name:'Demo Admin'}});return;
     }
-    if(username==='admin'&&password==='admin123'){await DB.addLog('Admin','Login','');onLogin({role:'admin',adminData:{role:'superadmin',name:'Admin'}});}
-    else{
+    setLoading(true);setError('');
+    try {
+      if(username==='admin'&&password==='admin123'){await DB.addLog('Admin','Login','Login default');onLogin({role:'admin',adminData:{role:'superadmin',name:'Admin'}});return;}
       const adm=await DB.loginAdmin(username,password);
       if(adm){await DB.addLog(adm.name,'Login','admin');onLogin({role:'admin',adminData:adm});}
       else{setError('Username atau password salah');setTimeout(()=>setError(''),3000);}
-    }
+    } catch(e){setError('Koneksi gagal: '+e.message);}
+    finally{setLoading(false);}
   };
   const loginGuru=async()=>{
     // Cek akun demo
@@ -1618,10 +1625,14 @@ function AdminStudents({students,onReload,settings,onBack}) {
     if(!form.name.trim()||!form.studentCode.trim()){alert('Nama dan ID Siswa wajib');return;}
     if(!editId&&students.some(s=>s.studentCode.toLowerCase()===form.studentCode.toLowerCase())){alert('ID Siswa sudah ada');return;}
     setSaving(true);
-    const s=editId?students.find(x=>x.id===editId):{id:uid()};
-    await DB.saveStudent(Object.assign({},s,form,{active:s.active!==undefined?s.active:true,createdAt:s.createdAt||new Date().toISOString()}));
-    await DB.addLog('Admin',editId?'Edit Siswa':'Tambah Siswa',form.name);
-    await onReload(); setSaving(false); setShowForm(false);
+    try{
+      const s=editId?students.find(x=>x.id===editId):{id:uid()};
+      const res=await DB.saveStudent(Object.assign({},s,form,{active:s.active!==undefined?s.active:true,createdAt:s.createdAt||new Date().toISOString()}));
+      if(res&&res.error) throw new Error(res.error);
+      await DB.addLog('Admin',editId?'Edit Siswa':'Tambah Siswa',form.name);
+      await onReload(); setShowForm(false);
+    }catch(e){alert('Gagal menyimpan: '+e.message);}
+    finally{setSaving(false);}
   };
   const toggleActive=async id=>{const s=students.find(x=>x.id===id);await DB.saveStudent(Object.assign({},s,{active:!s.active}));await DB.addLog('Admin',s.active?'Nonaktifkan':'Aktifkan',s.name);await onReload();};
   const del=async id=>{if(confirm('Hapus siswa?')){const s=students.find(x=>x.id===id);await DB.deleteStudent(id);await DB.addLog('Admin','Hapus Siswa',s&&s.name);await onReload();}};
@@ -2182,7 +2193,7 @@ function StudentLeave({student,leaves,onReload,onBack}) {
     await onReload();setSaving(false);setShowForm(false);setForm({type:'izin',startDate:todayStr(),endDate:todayStr(),reason:''});
   };
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Izin & Dispensasi',color1:'#a855f7',right:h('button',{onClick:()=>setShowForm(true),style:{padding:'8px 16px',borderRadius:'12px',background:'rgba(168,85,247,.1)',border:'1px solid rgba(168,85,247,.3)',color:'#a855f7',fontSize:'12px',fontFamily:MONO,cursor:'pointer',onBack}},'+ Ajukan')}),
+    h(SectionHeader,{title:'Izin & Dispensasi',color1:'#a855f7',right:h('button',{onClick:()=>setShowForm(true),style:{padding:'8px 16px',borderRadius:'12px',background:'rgba(168,85,247,.1)',border:'1px solid rgba(168,85,247,.3)',color:'#a855f7',fontSize:'12px',fontFamily:MONO,cursor:'pointer'}},'+ Ajukan')}),
     h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'12px'}},
       [{v:myLeaves.filter(l=>l.status==='pending').length,l:'Pending',c:'#facc15'},{v:myLeaves.filter(l=>l.status==='approved').length,l:'Disetujui',c:'#00ff88'},{v:myLeaves.filter(l=>l.status==='rejected').length,l:'Ditolak',c:'#f87171'}].map((s,i)=>h('div',{key:i,style:Object.assign({},gl,{borderRadius:'12px',padding:'12px',textAlign:'center'})},h('p',{style:{fontFamily:ORB,fontSize:'20px',fontWeight:'bold',color:s.c}},s.v),h('p',{style:{color:'var(--text-muted)',fontSize:'8px',fontFamily:MONO,marginTop:'4px'}},s.l)))
     ),
@@ -2312,7 +2323,7 @@ function AdminRekapBulanan({records,students,settings,holidays,onBack}) {
   const rekap = filtStu.map(s=>{
     const myRec = records.filter(r=>r.studentId===s.id&&r.date.startsWith(selYear+'-'+String(selMonth+1).padStart(2,'0')));
     const hadir=myRec.filter(r=>r.clockIn).length;
-    const telat=myRec.filter(r=>r.clockIn&&isLate(r.clockIn,settings.schoolStart)).length;
+    const telat=myRec.filter(r=>r.clockIn&&isLate(r.clockIn,(settings&&settings.schoolStart)||'07:00')).length;
     const alpha=Math.max(0,schoolDays.length-hadir);
     const pct=schoolDays.length>0?Math.round((hadir/schoolDays.length)*100):0;
     const grade=pct>=95?'A':pct>=80?'B':pct>=70?'C':pct>=60?'D':'E';
@@ -2545,7 +2556,7 @@ function AdminMultiAdmin({onReload,onBack}) {
   if(loading)return h(LoadingScreen,{msg:'Memuat admin...'});
   const roleColor=r=>r==='superadmin'?'#f87171':r==='admin'?'#00f0ff':'#a855f7';
   return h('div',{className:'afiu',style:{display:'flex',flexDirection:'column',gap:'20px'}},
-    h(SectionHeader,{title:'Manajemen Admin',count:admins.length,color1:'#f87171',right:h('button',{onClick:()=>setShowForm(true),style:{padding:'8px 14px',borderRadius:'10px',background:'var(--accent-bg)',border:'1px solid rgba(0,240,255,.3)',color:'var(--accent)',fontSize:'10px',fontFamily:'JetBrains Mono,monospace',cursor:'pointer',onBack}},'+ Tambah')}),
+    h(SectionHeader,{title:'Manajemen Admin',count:admins.length,color1:'#f87171',right:h('button',{onClick:()=>setShowForm(true),style:{padding:'8px 14px',borderRadius:'10px',background:'var(--accent-bg)',border:'1px solid rgba(0,240,255,.3)',color:'var(--accent)',fontSize:'10px',fontFamily:'JetBrains Mono,monospace',cursor:'pointer'}},'+ Tambah')}),
     h('div',{style:{background:'rgba(239,68,68,.05)',borderRadius:'12px',padding:'12px',border:'1px solid rgba(239,68,68,.15)'}},
       h('p',{style:{color:'rgba(248,113,113,.6)',fontSize:'10px',fontFamily:'JetBrains Mono,monospace',lineHeight:'1.6'}},'ℹ️ Superadmin: akses penuh termasuk Pengaturan, Backup, & Kelola Admin. Admin: hanya absensi, siswa, izin, WA, rekap, QR, guru. Buat table "admins" di Supabase dahulu.')
     ),
@@ -3260,7 +3271,9 @@ async function compressImage(file, maxW=1280, quality=0.75) {
       if(w>maxW){h=Math.round(h*maxW/w);w=maxW;}
       const cv=document.createElement('canvas');
       cv.width=w;cv.height=h;
-      cv.getContext('2d').drawImage(img,0,0,w,h);
+      const _ctx=cv.getContext('2d');
+      if(!_ctx){res(file);return;}
+      _ctx.drawImage(img,0,0,w,h);
       cv.toBlob(blob=>res(new File([blob],file.name,{type:'image/jpeg'})),'image/jpeg',quality);
     };
     img.src=url;
@@ -3277,10 +3290,12 @@ async function uploadToStorage(file, folder='questions') {
   }
   const ext = uploadFile.name.split('.').pop().toLowerCase()||'jpg';
   const fname = folder+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.'+ext;
+  const _uploadCtrl=new AbortController();
+  const _uploadTimer=setTimeout(()=>_uploadCtrl.abort(),30000); // 30s timeout
   const res = await fetch(
     SUPABASE_URL+'/storage/v1/object/cbt-media/'+fname,
-    { method:'POST', headers:{'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':uploadFile.type,'x-upsert':'true'}, body:uploadFile }
-  );
+    { method:'POST', headers:{'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Content-Type':uploadFile.type,'x-upsert':'true'}, body:uploadFile, signal:_uploadCtrl.signal }
+  ).finally(()=>clearTimeout(_uploadTimer));
   if(!res.ok){ const e=await res.json().catch(()=>({message:'Upload gagal'})); throw new Error(e.error||e.message||'Upload gagal'); }
   const origMB=(file.size/1024/1024).toFixed(1);
   const newMB=(uploadFile.size/1024/1024).toFixed(1);
@@ -3667,7 +3682,10 @@ function CbtExamModal({exam,onClose,onSave}) {
       ),
       h('div',{style:{display:'flex',gap:'10px',marginTop:'8px'}},
         h('button',{onClick:onClose,style:{flex:1,padding:'12px',borderRadius:'12px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer',fontFamily:MONO,fontSize:'11px'}},'Batal'),
-        h('button',{onClick:()=>onSave({...f,start_time:f.start_time?new Date(f.start_time).toISOString():null,end_time:f.end_time?new Date(f.end_time).toISOString():null}),
+        h('button',{onClick:()=>{
+            if(f.start_time&&f.end_time&&new Date(f.start_time)>=new Date(f.end_time)){alert('Waktu mulai harus sebelum waktu selesai');return;}
+            onSave({...f,start_time:f.start_time?new Date(f.start_time).toISOString():null,end_time:f.end_time?new Date(f.end_time).toISOString():null});
+          },
           disabled:!f.title||!f.kelas||!f.mapel,
           style:{flex:2,padding:'12px',borderRadius:'12px',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'12px',fontWeight:'bold',opacity:(!f.title||!f.kelas||!f.mapel)?0.4:1}},
           '💾 Simpan Ujian')
@@ -3694,16 +3712,23 @@ function CbtQuestionsModal({exam,onClose}) {
   const newQ=()=>setEditQ({id:genId(),exam_id:exam.id,type:'pg',question:'',options:['','','','',''],correct_answer:'A',score:1,order_num:questions.length+1});
 
   const handleImport=async()=>{
-    // Format: nomor. pertanyaan|A.opt|B.opt|C.opt|D.opt|JAWABAN
     const lines=importText.trim().split('\n').filter(l=>l.trim());
+    if(!lines.length){alert('Format import kosong');return;}
     const qs=lines.map((line,i)=>{
       const parts=line.split('|');
+      if(parts.length<2) return null;
       const q=parts[0].replace(/^\d+\.\s*/,'').trim();
-      const opts=parts.slice(1,5).map(o=>o.replace(/^[A-D]\./,'').trim());
-      const ans=(parts[5]||'A').trim().toUpperCase();
-      return {id:genId(),exam_id:exam.id,type:'pg',question:q,options:opts,correct_answer:ans,score:1,order_num:i+1};
-    });
-    if(qs.length){await DB.saveCbtQuestionsBulk(qs);reload();setShowImport(false);setImportText('');}
+      if(!q) return null;
+      const opts=parts.slice(1,5).map(o=>o.replace(/^[A-E]\./,'').trim()).filter(Boolean);
+      const ans=(parts[5]||parts[parts.length-1]||'A').trim().toUpperCase();
+      return {id:genId(),exam_id:exam.id,type:'pg',question:q,options:opts,correct_answer:ans,score:1,order_num:questions.length+i+1};
+    }).filter(Boolean);
+    if(!qs.length){alert('Tidak ada soal valid. Periksa format: pertanyaan|A.opsi|B.opsi|C.opsi|D.opsi|JAWABAN');return;}
+    try{
+      await DB.saveCbtQuestionsBulk(qs);
+      reload();setShowImport(false);setImportText('');
+      alert(qs.length+' soal berhasil diimport!');
+    }catch(e){alert('Gagal import: '+e.message);}
   };
 
   const inSt={width:'100%',padding:'9px 12px',borderRadius:'10px',background:'var(--input-bg)',border:'1px solid var(--border)',color:'var(--text-primary)',fontFamily:MONO,fontSize:'11px',boxSizing:'border-box'};
@@ -4014,7 +4039,7 @@ function CbtResultAdmin({exams,students,onReload}) {
                     ?h('span',{style:{fontFamily:MONO,fontSize:'10px',color:'#fb923c',background:'rgba(251,146,60,.1)',padding:'4px 8px',borderRadius:'6px',border:'1px solid rgba(251,146,60,.2)'}},'✏️ Ujian')
                     :pct!=null
                       ?h('div',null,
-                        h('p',{style:{fontFamily:ORB,fontSize:'16px',fontWeight:'bold',color:scoreColor(pct>1?Math.round(pct/(s.score_max||pct)*100):pct)}},pct+(s.score_max?'/'+s.score_max:'')),
+                        h('p',{style:{fontFamily:ORB,fontSize:'16px',fontWeight:'bold',color:scoreColor(s.score_max&&s.score_max>0?Math.round((pct/s.score_max)*100):pct>=0&&pct<=100?pct:100)}},pct+(s.score_max?'/'+s.score_max:'')),
                         s.score_max&&h('p',{style:{fontSize:'8px',fontFamily:MONO,color:'var(--text-dim)'}},'poin')
                       )
                       :h('span',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)'}},'Essay')
@@ -4029,13 +4054,13 @@ function CbtResultAdmin({exams,students,onReload}) {
         })
       )
     ),
-    detailSes&&h(CbtSessionDetail,{session:detailSes,questions,onClose:()=>setDetailSes(null),onSave:async(id,score)=>{await DB.saveCbtSession({...detailSes,score,status:'submitted'});const s2=await DB.getCbtSessions(selExam);setSessions(s2);setDetailSes(null);}})
+    detailSes&&h(CbtSessionDetail,{session:detailSes,questions,onClose:()=>setDetailSes(null),onSave:async(id,score,scoreMax)=>{await DB.saveCbtSession({...detailSes,score,score_max:scoreMax||null,status:'submitted'});const s2=await DB.getCbtSessions(selExam);setSessions(s2);setDetailSes(null);}})
   );
 }
 
 // ── Detail Sesi Siswa ──────────────────────────────────────────────
 function CbtSessionDetail({session,questions,onClose,onSave}) {
-  const [essayScores,setEssayScores]=useState({});
+  const [essayScores,setEssayScores]=useState(()=>{const init={};(questions||[]).forEach(q=>{if(q.type==='essay'&&session.answers&&session.answers[q.id+'_score']!=null)init[q.id]=session.answers[q.id+'_score'];});return init;});
   const ans=session.answers||{};
   const viol=session.violations||[];
   const photos=session.photos||[];
@@ -4060,7 +4085,7 @@ function CbtSessionDetail({session,questions,onClose,onSave}) {
         total+=essayScores[q.id]||0;
       }
     });
-    return maxScore>0?Math.round((total/maxScore)*100):0;
+    return {score:Math.round(total*10)/10, scoreMax:maxScore};
   };
 
   return h('div',{onClick:onClose,style:{position:'fixed',inset:0,zIndex:250,background:'rgba(0,0,0,.8)',backdropFilter:'blur(4px)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'16px',overflowY:'auto'}},
@@ -4120,7 +4145,7 @@ function CbtSessionDetail({session,questions,onClose,onSave}) {
 
       h('div',{style:{display:'flex',gap:'10px',marginTop:'4px'}},
         h('button',{onClick:onClose,style:{flex:1,padding:'12px',borderRadius:'12px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer',fontFamily:MONO}},'Tutup'),
-        h('button',{onClick:()=>onSave(session.id,calcScore()),style:{flex:2,padding:'12px',borderRadius:'12px',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'12px',fontWeight:'bold'}},'💾 Simpan Nilai ('+calcScore()+')')
+        h('button',{onClick:()=>{const sc=calcScore();onSave(session.id,sc.score,sc.scoreMax);},style:{flex:2,padding:'12px',borderRadius:'12px',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'12px',fontWeight:'bold'}},'💾 Simpan Nilai ('+calcScore()+')')
       )
     )
   );
@@ -4129,7 +4154,7 @@ function CbtSessionDetail({session,questions,onClose,onSave}) {
 // ═══════════════════════════════════════════════════════════════════
 // STUDENT CBT — Tampilan & Pengerjaan Ujian Siswa
 // ═══════════════════════════════════════════════════════════════════
-function StudentCBT({student,settings,isDemo}) {
+function StudentCBT({student,settings,isDemo,onBack}) {
   const [exams,setExams]=useState([]);
   const [loading,setLoading]=useState(true);
   const [activeExam,setActiveExam]=useState(null);
@@ -4153,9 +4178,12 @@ function StudentCBT({student,settings,isDemo}) {
   if(loading) return h(LoadingScreen,{msg:'Memuat ujian...'});
 
   return h('div',null,
-    h('div',{style:{marginBottom:'20px'}},
-      h('h2',{style:{fontFamily:ORB,fontSize:'16px',color:'var(--accent)',letterSpacing:'.08em'}},'📝 UJIAN CBT'),
-      h('p',{style:{fontSize:'10px',fontFamily:MONO,color:'var(--text-muted)',marginTop:'2px'}},'Ujian yang tersedia untuk kelas '+student.kelas)
+    h('div',{style:{display:'flex',alignItems:'center',gap:'10px',marginBottom:'20px'}},
+      onBack&&h('button',{onClick:onBack,style:{padding:'5px 10px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer',fontFamily:'monospace',fontSize:'10px',flexShrink:0}},'← Kembali'),
+      h('div',null,
+        h('h2',{style:{fontFamily:ORB,fontSize:'16px',color:'var(--accent)',letterSpacing:'.08em'}},'📝 UJIAN CBT'),
+        h('p',{style:{fontSize:'10px',fontFamily:MONO,color:'var(--text-muted)',marginTop:'2px'}},'Ujian yang tersedia untuk kelas '+student.kelas)
+      )
     ),
     exams.length===0?
       h('div',{style:{textAlign:'center',padding:'48px 24px'}},
@@ -4245,9 +4273,12 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   const [tokenInput,setTokenInput]=useState('');
   const [tokenPassed,setTokenPassed]=useState(!exam.token||isDemo);
   const [tokenError,setTokenError]=useState('');
+  const [savedScore,setSavedScore]=useState(null); // score dari sesi yang sudah submitted
+  const [savedScoreMax,setSavedScoreMax]=useState(null);
   const videoRef=useRef(null);
   const canvasRef=useRef(null);
   const sessionRef=useRef(null);
+  const camStreamRef=useRef(null);
 
   // ── Init ──────────────────────────────────────────────────────────
   useEffect(()=>{
@@ -4303,7 +4334,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
 
         // Proses sesi (sudah di-fetch bersamaan)
         ses=sesRaw||null;
-        if(ses&&ses.status==='submitted'){setSubmitted(true);setLoading(false);return;}
+        if(ses&&ses.status==='submitted'){setSavedScore(ses.score);setSavedScoreMax(ses.score_max);setSubmitted(true);setLoading(false);return;}
         if(ses){setAnswers(ses.answers||{});setViolations(ses.violations||[]);setPhotos(ses.photos||[]);}
         else{
           ses={id:genId(),exam_id:exam.id,student_id:student.id,student_name:student.name,
@@ -4333,7 +4364,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
         });
         setQuestions(qs);
         setSession(ses);
-        sessionRef.current=ses;
+        sessionRef.current={...ses,_questions:qs};
         setTimeLeft(exam.duration_minutes*60);
         setLoading(false);
         return; // sudah handle sesi di sini, skip blok sesi di bawah
@@ -4341,21 +4372,16 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       if(exam.shuffle_questions) qs=shuffle(qs);
       if(exam.shuffle_answers) qs=qs.map(q=>{
         if(q.type!=='pg'&&q.type!=='mcma') return q;
+        if(!q.options||q.options.length===0) return q;
         const LTRS=['A','B','C','D','E'];
-        const optsLen=q.options?q.options.length:4;
-        // Pasangkan label dengan teks opsi secara dinamis
         const pairs=q.options.map((txt,i)=>({ltr:LTRS[i],txt}));
-        // Acak pasangan
         const shuffled=shuffle(pairs);
         const newOpts=shuffled.map(p=>p.txt);
         if(q.type==='pg'){
-          // Cari label baru untuk jawaban benar
           const correctTxt=pairs.find(p=>p.ltr===q.correct_answer)?.txt||'';
           const newCorrectIdx=shuffled.findIndex(p=>p.txt===correctTxt);
-          const newCorrectLtr=LTRS[newCorrectIdx]||'A';
-          return {...q, options:newOpts, correct_answer:newCorrectLtr};
+          return {...q, options:newOpts, correct_answer:LTRS[newCorrectIdx]||'A'};
         } else {
-          // MCMA — update semua label jawaban benar
           const corrArr=Array.isArray(q.correct_answer)?q.correct_answer:[];
           const correctTxts=corrArr.map(ltr=>pairs.find(p=>p.ltr===ltr)?.txt||'');
           const newCorrectArr=shuffled.map((p,i)=>correctTxts.includes(p.txt)?LTRS[i]:null).filter(Boolean);
@@ -4368,7 +4394,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       if(isDemo){
         const ses={id:'demo-ses',exam_id:exam.id,student_id:student.id,student_name:student.name,student_code:student.studentCode||'DEMO01',kelas:student.kelas,start_time:new Date().toISOString(),answers:{},photos:[],violations:[],status:'ongoing'};
         setSession(ses);
-        sessionRef.current=ses;
+        sessionRef.current={...ses,_questions:qs};
         setTimeLeft(exam.duration_minutes*60);
         setLoading(false);
       }
@@ -4382,7 +4408,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false})
       .then(stream=>{
         localStream=stream;
-        setCamStream(stream);
+        setCamStream(stream);camStreamRef.current=stream;
         if(videoRef.current){videoRef.current.srcObject=stream;videoRef.current.play();}
       })
       .catch(e=>{setCamError('Kamera tidak dapat diakses: '+e.message);});
@@ -4401,7 +4427,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   },[camStream,submitted,capturePhoto]);
 
   const capturePhoto=useCallback((manual=false)=>{
-    if(!canvasRef.current||!videoRef.current) return null;
+    if(!canvasRef.current||!videoRef.current||!camStreamRef.current) return null;
     const cv=canvasRef.current;const vd=videoRef.current;
     cv.width=160;cv.height=120;
     cv.getContext('2d').drawImage(vd,0,0,160,120);
@@ -4409,7 +4435,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     setPhotos(p=>{
       const np=[...p,data];
       if(sessionRef.current&&!isDemo){
-        DB.saveCbtSession({...sessionRef.current,photos:np,answers:Object.fromEntries(Object.entries(sessionRef.current.answers||{}))});
+        DB.saveCbtSession({...sessionRef.current,photos:np,answers:Object.fromEntries(Object.entries(sessionRef.current.answers||{}))}).catch(()=>{});
       }
       return np;
     });
@@ -4425,7 +4451,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       // Auto-save dengan jitter (bukan tepat tiap 30 detik)
       const saveInterval=25+Math.floor(Math.random()*10);
       if(t%saveInterval===0&&sessionRef.current&&!isDemo){
-        DB.saveCbtSession({...sessionRef.current,answers});
+        DB.saveCbtSession({...sessionRef.current,answers:sessionRef.current.answers||{}}).catch(()=>{});
       }
       return t-1;
     }),1000);
@@ -4465,7 +4491,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
         const v={type:'Tab switch / keluar tab',time:new Date().toISOString()};
         setViolations(p=>{
           const nv=[...p,v];
-          if(sessionRef.current&&!isDemo) DB.saveCbtSession({...sessionRef.current,violations:nv});
+          if(sessionRef.current&&!isDemo) DB.saveCbtSession({...sessionRef.current,violations:nv}).catch(()=>{});
           return nv;
         });
         setShowWarning('⚠️ Terdeteksi keluar dari tab ujian!');
@@ -4488,7 +4514,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
         const v={type:'Keluar dari fullscreen',time:new Date().toISOString()};
         setViolations(p=>{
           const nv=[...p,v];
-          if(sessionRef.current&&!isDemo) DB.saveCbtSession({...sessionRef.current,violations:nv});
+          if(sessionRef.current&&!isDemo) DB.saveCbtSession({...sessionRef.current,violations:nv}).catch(()=>{});
           return nv;
         });
         setShowWarning('⚠️ Keluar fullscreen terdeteksi! Kembali ke fullscreen...');
@@ -4516,13 +4542,14 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     if(submitted) return;
     setSubmitted(true);
     if(document.exitFullscreen&&document.fullscreenElement) document.exitFullscreen().catch(()=>{});
-    if(camStream) camStream.getTracks().forEach(t=>t.stop());
+    const _cs=camStreamRef.current||camStream;if(_cs)_cs.getTracks().forEach(t=>t.stop());camStreamRef.current=null;
 
     if(!isDemo&&sessionRef.current){
       // Hitung skor PG+TF otomatis
       let total=0,maxScore=0;
       const finalAns=sessionRef.current.answers||answers;
-      questions.forEach(q=>{
+      const finalQs=sessionRef.current._questions||questions;
+      finalQs.forEach(q=>{
         maxScore+=q.score||1;
         if(q.type==='pg'||q.type==='tf'){
           if(finalAns[q.id]===q.correct_answer) total+=q.score||1;
@@ -4538,13 +4565,13 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
           }
         }
       });
-      const hasEssay=questions.some(q=>q.type==='essay');
+      const hasEssay=finalQs.some(q=>q.type==='essay');
       const score=maxScore>0&&!hasEssay?Math.round(total*10)/10:null;
       const scoreMax=maxScore>0&&!hasEssay?maxScore:null;
       // Pakai queue + retry untuk toleransi lonjakan bersamaan
       await queueSubmit({...sessionRef.current,end_time:new Date().toISOString(),status:'submitted',score,score_max:scoreMax,answers:finalAns});
     }
-  },[submitted,questions,answers,camStream,isDemo]);
+  },[submitted,camStream,isDemo]);
 
   // ── Token gate ───────────────────────────────────────────────────
   if(!tokenPassed) return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}},
@@ -4583,13 +4610,15 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   );
 
   if(submitted){
-    const pgQ=questions.filter(q=>q.type!=='essay');
-    const essQ=questions.filter(q=>q.type==='essay');
+    const _qs=sessionRef.current?._questions||questions;
+    const pgQ=_qs.filter(q=>q.type!=='essay');
+    const essQ=_qs.filter(q=>q.type==='essay');
     let correct=0,total=0;
-    pgQ.forEach(q=>{total+=q.score||1;if(q.type==='mcma'){const cA=Array.isArray(q.correct_answer)?q.correct_answer:[];const sA=Array.isArray(answers[q.id])?answers[q.id]:[];if(cA.length>0){const pi=(q.score||1)/cA.length;let pts=0;cA.forEach(c=>{if(sA.includes(c))pts+=pi;});sA.forEach(s=>{if(!cA.includes(s))pts-=pi;});correct+=Math.max(0,Math.round(pts*10)/10);}}else{if(answers[q.id]===q.correct_answer)correct+=q.score||1;}});
-    const rawScore=Math.round(correct*10)/10;
-    const rawTotal=total;
-    const pct=rawTotal>0?Math.round((rawScore/rawTotal)*100):null;
+    const finalAnswers=sessionRef.current?.answers||answers;
+    pgQ.forEach(q=>{total+=q.score||1;if(q.type==='mcma'){const cA=Array.isArray(q.correct_answer)?q.correct_answer:[];const sA=Array.isArray(finalAnswers[q.id])?finalAnswers[q.id]:[];if(cA.length>0){const pi=(q.score||1)/cA.length;let pts=0;cA.forEach(c=>{if(sA.includes(c))pts+=pi;});sA.forEach(s=>{if(!cA.includes(s))pts-=pi;});correct+=Math.max(0,Math.round(pts*10)/10);}}else{if(finalAnswers[q.id]===q.correct_answer)correct+=q.score||1;}});
+    const rawScore=rawTotal>0?Math.round(correct*10)/10:(savedScore||0);
+    const displayTotal=rawTotal>0?rawTotal:(savedScoreMax||0);
+    const pct=displayTotal>0?Math.round((rawScore/displayTotal)*100):(savedScore!=null&&savedScoreMax?Math.round((savedScore/savedScoreMax)*100):null);
     const hasEssay=essQ.length>0;
     const scoreColor=pct!=null?(pct>=80?'#00ff88':pct>=60?'#facc15':'#f87171'):'#00ff88';
     return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',display:'flex',alignItems:'center',justifyContent:'center',padding:'24px'}},
@@ -4598,9 +4627,9 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
         h('h2',{style:{fontFamily:ORB,fontSize:'20px',color:'var(--accent)',letterSpacing:'.1em',marginBottom:'8px'}},'UJIAN SELESAI'),
         exam.show_score!==false&&rawTotal>0&&h('div',{style:{margin:'20px 0'}},
           h('p',{style:{fontFamily:ORB,fontSize:'52px',fontWeight:'bold',color:scoreColor,lineHeight:1}},rawScore+(rawScore!==Math.floor(rawScore)?'':'')+''),
-          h('p',{style:{fontFamily:MONO,fontSize:'13px',color:'var(--text-muted)',marginTop:'4px'}},'dari '+rawTotal+' poin'),
+          h('p',{style:{fontFamily:MONO,fontSize:'13px',color:'var(--text-muted)',marginTop:'4px'}},displayTotal>0?'dari '+displayTotal+' poin':''),
           h('div',{style:{marginTop:'10px',padding:'6px 16px',borderRadius:'20px',background:scoreColor+'18',border:'1px solid '+scoreColor+'40',display:'inline-block'}},
-            h('span',{style:{fontFamily:ORB,fontSize:'12px',color:scoreColor}},pct+'% — '+(pct>=80?'Sangat Baik':pct>=70?'Baik':pct>=60?'Cukup':'Perlu Belajar Lagi'))
+            h('span',{style:{fontFamily:ORB,fontSize:'12px',color:scoreColor}},pct!=null?pct+'% — '+(pct>=80?'Sangat Baik':pct>=70?'Baik':pct>=60?'Cukup':'Perlu Belajar Lagi'):'Menunggu penilaian')
           )
         ),
         exam.show_score===false&&h('p',{style:{fontFamily:MONO,fontSize:'12px',color:'var(--text-muted)',margin:'16px 0',padding:'12px',borderRadius:'12px',background:'var(--bg-panel)',border:'1px solid var(--border)'}},'📋 Nilai akan diumumkan oleh guru/admin'),
@@ -5085,16 +5114,28 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
       setSettings(DEMO_SETTINGS);
       setLoading(false);return;
     }
-    const[stu,rec,lv,an,set_,hol]=await Promise.all([DB.getStudents(),DB.getRecords(),DB.getLeaves(),DB.getAnnouncements(),DB.getSettings(),DB.getHolidays()]);
-    setStudents(stu);setRecords(rec);setLeaves(lv);setAnns(an);setSettings(set_);setHolidays(hol);setLoading(false);
+    try {
+      const[stu,rec,lv,an,set_,hol]=await Promise.all([DB.getStudents(),DB.getRecords(),DB.getLeaves(),DB.getAnnouncements(),DB.getSettings(),DB.getHolidays()]);
+      setStudents(stu);setRecords(rec);setLeaves(lv);setAnns(an);setSettings(set_);setHolidays(hol);
+    } catch(e) {
+      console.error('AdminPanel reload error:',e);
+    } finally {
+      setLoading(false);
+    }
   },[isDemo]);
   useEffect(()=>{reload();},[reload]);
   useEffect(()=>{if(page!=='activity'){const iv=setInterval(reload,30000);return()=>clearInterval(iv);}},[page,reload]);
 
   const saveSettings=async s=>{
     if(isDemo||!isSuperAdmin){alert('Akses ditolak: hanya Superadmin yang bisa mengubah pengaturan.');return;}await DB.saveSettings(s);setSettings(s);};
-  const clearRecords=async()=>{if(isDemo||!isSuperAdmin){alert('Akses ditolak: hanya Superadmin yang bisa menghapus data.');return;}if(confirm('Hapus SEMUA absensi?')){await DB.clearRecords();await DB.addLog('Admin','Clear Records','');await reload();}};
+  const clearRecords=async()=>{if(isDemo||!isSuperAdmin){alert('Akses ditolak: hanya Superadmin yang bisa menghapus data.');return;}if(confirm('Hapus SEMUA absensi?')){await DB.clearRecords(true);await DB.addLog('Admin','Clear Records','');await reload();}};
 
+  if(loadError&&!loading&&!settings) return h('div',{style:{minHeight:'100vh',background:'var(--bg-base)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'32px',gap:'16px',fontFamily:MONO}},
+    h('div',{style:{fontSize:'40px'}},'⚠️'),
+    h('p',{style:{color:'#f87171',fontSize:'12px',textAlign:'center'}},loadError),
+    h('button',{onClick:()=>{setLoadError(null);setLoading(true);reload();},style:{padding:'10px 24px',borderRadius:'12px',background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',cursor:'pointer',fontSize:'11px'}},'🔄 Coba Lagi'),
+    h('button',{onClick:onLogout,style:{padding:'8px 16px',borderRadius:'10px',background:'none',border:'1px solid var(--border)',color:'var(--text-muted)',cursor:'pointer',fontSize:'10px'}},'Keluar')
+  );
   if(loading||!settings)return h(LoadingScreen,{msg:'Memuat data...'});
   const pending=leaves.filter(l=>l.status==='pending').length;
   const nav=[
@@ -5203,6 +5244,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
   const[page,setPage]=useState('home');
   const[camAction,setCamAction]=useState(null);
   const[loading,setLoading]=useState(true);
+  const[loadError,setLoadError]=useState(null);
   const isDesktop=useIsDesktop();
   const[records,setRecords]=useState([]);
   const[leaves,setLeaves]=useState([]);
@@ -5220,21 +5262,26 @@ function StudentPanel({student,onLogout,isDemo=false}) {
       setAnns([{id:'da1',title:'Selamat Datang di Mode Demo!',content:'Ini adalah akun demo. Data tidak tersimpan ke database.',priority:'important',createdAt:new Date().toISOString()}]);
       setLoading(false);return;
     }
-    const[rec,lv,set_,an]=await Promise.all([DB.getRecords(),DB.getLeaves(),DB.getSettings(),DB.getAnnouncements()]);
-    setRecords(rec.filter(r=>r.studentId===student.id));
-    setLeaves(lv);setSettings(set_);setAnns(an);setLoading(false);
+    try{
+      const[rec,lv,set_,an]=await Promise.all([DB.getRecords(),DB.getLeaves(),DB.getSettings(),DB.getAnnouncements()]);
+      setRecords(rec.filter(r=>r.studentId===student.id));
+      setLeaves(lv);setSettings(set_);setAnns(an);
+    }catch(e){console.error('StudentPanel reload:',e);setLoadError('Gagal memuat data. Periksa koneksi internet.');}
+    finally{setLoading(false);}
   },[student.id,isDemo]);
   useEffect(()=>{reload();},[reload]);
   useEffect(()=>{const iv=setInterval(reload,30000);return()=>clearInterval(iv);},[reload]);
 
   const handleCapture=async(photo,location,distance)=>{
     const now=new Date();const time=fmtTime(now).substring(0,5);const date=todayStr();
-    const existing=records.find(r=>r.date===date);
+    const existing=records.find(r=>r.date===date&&r.studentId===student.id);
     let rec;
     const action=camAction;
     setCamAction(null);
-    let clockOutStatus=null;
-    let clockInStatus=null;
+    // Guard: cegah double absen masuk / keluar
+    if(action==='in'&&existing&&existing.clockIn){showToast('Anda sudah absen masuk hari ini','warning');return;}
+    if(action==='out'&&existing&&existing.clockOut){showToast('Anda sudah absen keluar hari ini','warning');return;}
+    if(action==='out'&&(!existing||!existing.clockIn)){showToast('Absen masuk dulu sebelum absen keluar','warning');return;}
     if(action==='in'){
       // Hitung status masuk: cepat datang / tepat / terlambat
       const [ss_h,ss_m]=(settings.schoolStart||'07:00').split(':').map(Number);
@@ -5289,7 +5336,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
             page==='home'&&h(StudentHome,{student,records,settings,school:settings,announcements:anns,leaves,onOpenCamera:act=>{setCamAction(act);setPage('camera');}}),
             page==='history'&&h(StudentHistory,{onBack:()=>setPage('home'),student,records,settings}),
             page==='kartu'&&h(StudentKartu,{onBack:()=>setPage('home'),student,settings}),
-            page==='cbt'&&h(StudentCBT,{student,settings,isDemo}),
+            page==='cbt'&&h(StudentCBT,{student,settings,isDemo,onBack:()=>setPage('home')}),
             page==='leave'&&h(StudentLeave,{onBack:()=>setPage('home'),student,leaves,onReload:reload,isDemo}),
             page==='profile'&&h(StudentProfile,{onBack:()=>setPage('home'),student,records,settings})
           ),
@@ -5322,7 +5369,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
       page==='history'&&h(StudentHistory,{onBack:()=>setPage('home'),student,records,settings}),
       page==='calendar'&&h(StudentCalendar,{onBack:()=>setPage('home'),student,records,settings,leaves}),
       page==='kartu'&&h(StudentKartu,{onBack:()=>setPage('home'),student,settings}),
-      page==='cbt'&&h(StudentCBT,{student,settings,isDemo}),
+      page==='cbt'&&h(StudentCBT,{student,settings,isDemo,onBack:()=>setPage('home')}),
       page==='leave'&&h(StudentLeave,{onBack:()=>setPage('home'),student,leaves,onReload:reload}),
       page==='profile'&&h(StudentProfile,{onBack:()=>setPage('home'),student,records,settings})
     ),
@@ -5478,18 +5525,24 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
       setSettings(DEMO_SETTINGS);
       setLoading(false);return;
     }
-    const [stu, rec, lv, set_] = await Promise.all([DB.getStudents(), DB.getRecords(), DB.getLeaves(), DB.getSettings()]);
-    setStudents(stu.filter(s => s.kelas === teacher.kelas && s.active));
-    setRecords(rec);
-    setLeaves(lv.filter(l => {
-      const s = stu.find(x => x.id === l.studentId);
-      return s && s.kelas === teacher.kelas;
-    }));
-    setSettings(set_);
-    setLoading(false);
+    try {
+      const [stu, rec, lv, set_] = await Promise.all([DB.getStudents(), DB.getRecords(), DB.getLeaves(), DB.getSettings()]);
+      setStudents(stu.filter(s => s.kelas === teacher.kelas && s.active));
+      setRecords(rec);
+      setLeaves(lv.filter(l => {
+        const s = stu.find(x => x.id === l.studentId);
+        return s && s.kelas === teacher.kelas;
+      }));
+      setSettings(set_);
+    } catch(e) {
+      console.error('WaliKelasPanel reload error:',e);
+    } finally {
+      setLoading(false);
+    }
   }, [teacher.kelas, isDemo]);
 
   useEffect(() => { reload(); }, [reload]);
+  useEffect(()=>{const iv=setInterval(reload,30000);return()=>clearInterval(iv);},[reload]);
 
   const nav = [
     {id:'rekap', label:'Rekap', icon:'📊'},
@@ -5519,7 +5572,7 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
         page==='rekap'&&h(WaliRekap,{onBack:()=>setPage('rekap'),students,records,settings,kelas:teacher.kelas}),
         page==='izin'&&h(WaliIzin,{onBack:()=>setPage('rekap'),leaves,students,onReload:reload,settings}),
         page==='cbt'&&h(WaliCBT,{onBack:()=>setPage('rekap'),teacher,students,isDemo}),
-        page==='wa'&&h(AdminWA,{onBack:()=>setPage('dashboard'),students,records,settings:settings||{},onReload:reload})
+        page==='wa'&&h(AdminWA,{onBack:()=>setPage('rekap'),students,records,settings:settings||{},onReload:reload})
       )
     ),
     showTheme&&h(ThemePicker,{onClose:()=>setShowTheme(false)})
@@ -5553,10 +5606,10 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
             h('p',{style:{color:'var(--text-muted)',fontSize:'9px',fontFamily:MONO,marginTop:'4px'}},s.l)
           ))
       ),
-      page==='rekap' && h(WaliRekap, {students, records, settings, kelas:teacher.kelas}),
-      page==='izin'  && h(WaliIzin,  {leaves, students, onReload:reload, settings}),
-      page==='cbt'   && h(WaliCBT,   {teacher, students, isDemo}),
-      page==='wa'    && h(AdminWA,   {students, records, settings:settings||{}, onReload:reload}),
+      page==='rekap' && h(WaliRekap, {onBack:()=>setPage('rekap'),students, records, settings:settings||{}, kelas:teacher.kelas}),
+      page==='izin'  && h(WaliIzin,  {onBack:()=>setPage('rekap'),leaves, students, onReload:reload, settings}),
+      page==='cbt'   && h(WaliCBT,   {onBack:()=>setPage('rekap'),teacher, students, isDemo}),
+      page==='wa'    && h(AdminWA,   {onBack:()=>setPage('rekap'),students, records, settings:settings||{}, onReload:reload}),
     ),
     h(NavBar, {items:nav, active:page, onSelect:setPage}),
     showTheme && h(ThemePicker, {onClose:()=>setShowTheme(false)})
@@ -5674,17 +5727,23 @@ function GuruMapelPanel({teacher, onLogout, isDemo=false}) {
       setSettings(DEMO_SETTINGS);
       setLoading(false);return;
     }
-    const [stu, sa, set_] = await Promise.all([DB.getStudents(), DB.getSubjectAttendance({teacherId:teacher.id}), DB.getSettings()]);
-    setAllStudents(stu.filter(s=>s.active));
-    const filtered = kelasList.length > 0 ? stu.filter(s=>s.active&&kelasList.includes(s.kelas)) : stu.filter(s=>s.active);
-    setStudents(filtered);
-    if(!filterKelas && kelasList.length>0) setFilterKelas(kelasList[0]);
-    setSubjAtt(sa);
-    setSettings(set_);
-    setLoading(false);
+    try {
+      const [stu, sa, set_] = await Promise.all([DB.getStudents(), DB.getSubjectAttendance({teacherId:teacher.id}), DB.getSettings()]);
+      setAllStudents(stu.filter(s=>s.active));
+      const filtered = kelasList.length > 0 ? stu.filter(s=>s.active&&kelasList.includes(s.kelas)) : stu.filter(s=>s.active);
+      setStudents(filtered);
+      if(!filterKelas && kelasList.length>0) setFilterKelas(kelasList[0]);
+      setSubjAtt(sa);
+      setSettings(set_);
+    } catch(e) {
+      console.error('GuruMapelPanel reload error:',e);
+    } finally {
+      setLoading(false);
+    }
   }, [teacher.id, isDemo]);
 
   useEffect(() => { reload(); }, [reload]);
+  useEffect(()=>{const iv=setInterval(reload,30000);return()=>clearInterval(iv);},[reload]);
 
   const nav = [
     {id:'absen',  label:'Absen',   icon:'✅'},
@@ -5700,9 +5759,9 @@ function GuruMapelPanel({teacher, onLogout, isDemo=false}) {
     h('div',{className:'app-content'},
       h('main',null,
         isDemo&&h('div',{style:{margin:'0 0 20px',padding:'10px 14px',borderRadius:'12px',background:'rgba(250,204,21,.08)',border:'1px solid rgba(250,204,21,.25)',display:'flex',alignItems:'center',gap:'8px'}},h('span',null,'🎮'),h('div',null,h('p',{style:{color:'#facc15',fontSize:'10px',fontFamily:MONO,fontWeight:'bold'}},'MODE DEMO'),h('p',{style:{color:'rgba(250,204,21,.5)',fontSize:'9px',fontFamily:MONO}},'Data tidak tersimpan'))),
-        page==='absen'&&h(MapelAbsen,{onBack:()=>setPage('rekap'),teacher,students:allStudents,kelasList,settings,onReload:reload,isDemo}),
-        page==='rekap'&&h(MapelRekap,{onBack:()=>setPage('rekap'),teacher,students:allStudents,subjAtt,kelasList}),
-        page==='cbt'&&h(GuruCBT,{onBack:()=>setPage('rekap'),teacher,students:allStudents,isDemo})
+        page==='absen'&&h(MapelAbsen,{onBack:()=>setPage('absen'),teacher,students:allStudents,kelasList,settings,onReload:reload,isDemo}),
+        page==='rekap'&&h(MapelRekap,{onBack:()=>setPage('absen'),teacher,students:allStudents,subjAtt,kelasList}),
+        page==='cbt'&&h(GuruCBT,{onBack:()=>setPage('absen'),teacher,students:allStudents,isDemo})
       )
     ),
     showTheme&&h(ThemePicker,{onClose:()=>setShowTheme(false)})
@@ -5725,9 +5784,9 @@ function GuruMapelPanel({teacher, onLogout, isDemo=false}) {
       )
     ),
     h('main',{style:{position:'relative',zIndex:10,maxWidth:'512px',margin:'0 auto',padding:'20px 16px 100px'}},
-      page==='absen' && h(MapelAbsen, {teacher, students:allStudents, kelasList, settings, onReload:reload, isDemo}),
-      page==='rekap' && h(MapelRekap, {teacher, students:allStudents, subjAtt, kelasList}),
-      page==='cbt'   && h(GuruCBT, {teacher, students:allStudents, isDemo}),
+      page==='absen' && h(MapelAbsen, {onBack:()=>setPage('absen'),teacher, students:allStudents, kelasList, settings, onReload:reload, isDemo}),
+      page==='rekap' && h(MapelRekap, {onBack:()=>setPage('absen'),teacher, students:allStudents, subjAtt, kelasList}),
+      page==='cbt'   && h(GuruCBT, {onBack:()=>setPage('absen'),teacher, students:allStudents, isDemo}),
     ),
     h(NavBar, {items:nav, active:page, onSelect:setPage}),
     showTheme && h(ThemePicker, {onClose:()=>setShowTheme(false)})
@@ -5906,9 +5965,8 @@ class ErrorBoundary extends React.Component {
 
 function App() {
   // Restore session dari sessionStorage agar tidak hilang saat SW update / cache refresh
-  const savedSession=(()=>{try{const s=sessionStorage.getItem('absensi_session');return s?JSON.parse(s):null;}catch(e){return null;}})();
-  const[session,setSession]=useState(savedSession);
-  const[checking,setChecking]=useState(!savedSession); // skip checking jika sudah ada session
+  const[session,setSession]=useState(()=>{try{const s=sessionStorage.getItem('absensi_session');return s?JSON.parse(s):null;}catch(e){return null;}});
+  const[checking,setChecking]=useState(()=>{try{return !sessionStorage.getItem('absensi_session');}catch(e){return true;}}); // skip checking jika sudah ada session
 
   const saveSession=(s)=>{
     try{
@@ -5919,7 +5977,7 @@ function App() {
   };
 
   useEffect(()=>{
-    if(savedSession){setChecking(false);return;} // sudah restore dari storage
+    if(session){setChecking(false);return;} // sudah ada session dari storage
     DB.getSettings().then(()=>setChecking(false)).catch(()=>setChecking(false));
   },[]);
 
