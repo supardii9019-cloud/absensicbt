@@ -648,50 +648,44 @@ const importStudentsExcel = (file, existingStudents, onImport) => {
   reader.onload = async (e) => {
     try {
       const wb = XLSX.read(e.target.result, {type:'binary'});
-      // DEBUG: tampilkan nama semua sheet
-      const sheetInfo = wb.SheetNames.map((n,i)=>{
-        const r0=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1})[0]||[];
-        return n+': ['+r0.slice(0,4).join(', ')+']';
-      }).join('\n');
-      alert('Sheet ditemukan ('+wb.SheetNames.length+'):\n'+sheetInfo);
-      // Cari sheet yang punya kolom 'Kode Siswa' dan 'Nama' (scan semua sheet)
-      let ws = null;
+      const isNum = s => /^\d+$/.test(String(s).trim());
+      const ci = (hdr,ns) => { for(const n of ns){ const x=hdr.findIndex(h=>h.includes(n)); if(x>=0)return x; } return -1; };
+      const collected = [];
+      let validSheet = false;
       for(const shName of wb.SheetNames){
-        const candidate = wb.Sheets[shName];
-        const r0 = XLSX.utils.sheet_to_json(candidate,{header:1})[0]||[];
-        const h0 = r0.map(h=>String(h||'').toLowerCase());
-        if(h0.some(h=>h.includes('kode'))&&h0.some(h=>h.includes('nama'))){
-          ws = candidate; break;
+        const ws = wb.Sheets[shName];
+        const rows = XLSX.utils.sheet_to_json(ws, {header:1});
+        if(!rows||rows.length<2) continue;
+        const hdr = (rows[0]||[]).map(h=>String(h||'').toLowerCase().trim());
+        const iCode=ci(hdr,['kode']), iName=ci(hdr,['nama']);
+        if(iCode<0||iName<0) continue;
+        validSheet = true;
+        const iPass=ci(hdr,['password','pass','sandi']);
+        const iKelas=ci(hdr,['kelas']), iNis=ci(hdr,['nis']), iPhone=ci(hdr,['hp','phone','telepon','wa']);
+        for(let r=1;r<rows.length;r++){
+          const row=rows[r];
+          if(!row||!row.length) continue;
+          const code=String(row[iCode]!=null?row[iCode]:'').trim();
+          const name=String(row[iName]!=null?row[iName]:'').trim();
+          if(!code||!name||isNum(code)) continue;
+          if(name.toLowerCase().includes('contoh')||code.toLowerCase()==='kode siswa') continue;
+          const pass=iPass>=0&&row[iPass]!=null?String(row[iPass]).trim():'123456';
+          const kelas=iKelas>=0&&row[iKelas]!=null?String(row[iKelas]).trim():'';
+          const nis=iNis>=0&&row[iNis]!=null?String(row[iNis]).trim():'';
+          const phone=iPhone>=0&&row[iPhone]!=null?String(row[iPhone]).trim():'';
+          collected.push({code,name,pass,kelas,nis,phone});
         }
       }
-      if(!ws){alert('Sheet dengan kolom Kode Siswa & Nama tidak ditemukan di file ini.');return;}
-      const rows = XLSX.utils.sheet_to_json(ws, {header:1});
-      // Baca header - mapping by nama kolom (tahan terhadap kolom No/Status ekstra)
-      const hdr = (rows[0]||[]).map(h=>String(h||'').toLowerCase().trim());
-      const ci = (ns)=>{for(const n of ns){const x=hdr.findIndex(h=>h.includes(n));if(x>=0)return x;}return -1;};
-      const iCode=ci(['kode']), iName=ci(['nama']), iPass=ci(['password','pass','sandi']);
-      const iKelas=ci(['kelas']), iNis=ci(['nis']), iPhone=ci(['hp','phone','telepon','wa']);
-      if(iCode<0||iName<0){alert('Format tidak dikenali. Pastikan ada kolom: Kode Siswa & Nama Lengkap');return;}
-      const newStudents = [];
-      const errors = [];
-      for(let i=1; i<rows.length; i++){
-        const row = rows[i];
-        if(!row||row.length===0) continue;
-        const code = iCode>=0&&row[iCode]!=null?String(row[iCode]).trim():'';
-        const name = iName>=0&&row[iName]!=null?String(row[iName]).trim():'';
-        if(!code||!name||name.toLowerCase().includes('contoh')) continue;
-        const pass = iPass>=0&&row[iPass]!=null?String(row[iPass]).trim():'123456';
-        const kelas = iKelas>=0&&row[iKelas]!=null?String(row[iKelas]).trim():'';
-        const nis = iNis>=0&&row[iNis]!=null?String(row[iNis]).trim():'';
-        const phone = iPhone>=0&&row[iPhone]!=null?String(row[iPhone]).trim():'';
-        if(existingStudents.some(s=>s.studentCode.toLowerCase()===code.toLowerCase())){
-          errors.push('ID '+code+' sudah ada, dilewati');
-          continue;
+      if(!validSheet){alert('Sheet dengan kolom Kode Siswa & Nama tidak ditemukan.');return;}
+      const newStudents=[], errors=[];
+      for(const d of collected){
+        if(newStudents.some(s=>s.studentCode.toLowerCase()===d.code.toLowerCase())||existingStudents.some(s=>s.studentCode.toLowerCase()===d.code.toLowerCase())){
+          errors.push('ID '+d.code+' sudah ada, dilewati'); continue;
         }
-        newStudents.push({id:uid(),studentCode:code,name,password:pass,kelas,nis,phone,active:true,createdAt:new Date().toISOString()});
+        newStudents.push({id:uid(),studentCode:d.code,name:d.name,password:d.pass,kelas:d.kelas,nis:d.nis,phone:d.phone,active:true,createdAt:new Date().toISOString()});
       }
-      if(newStudents.length===0){alert('Tidak ada data baru. '+errors.join('\n'));return;}
-      const konfirm = confirm(newStudents.length+' siswa akan diimport.\n'+(errors.length>0?'Dilewati: '+errors.length+' baris (ID duplikat)\n':'')+'Lanjutkan?');
+      if(!newStudents.length){alert('Tidak ada data baru.\n'+(errors.length?errors.slice(0,5).join('\n'):'Semua ID sudah terdaftar.'));return;}
+      const konfirm=confirm(newStudents.length+' siswa akan diimport.'+(errors.length?'\nDilewati: '+errors.length+' baris (ID duplikat)':'')+'\nLanjutkan?');
       if(!konfirm) return;
       onImport(newStudents, errors);
     } catch(err) {
