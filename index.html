@@ -648,7 +648,17 @@ const importStudentsExcel = (file, existingStudents, onImport) => {
   reader.onload = async (e) => {
     try {
       const wb = XLSX.read(e.target.result, {type:'binary'});
-      const ws = wb.Sheets[wb.SheetNames[0]];
+      // Cari sheet yang punya kolom 'Kode Siswa' dan 'Nama' (scan semua sheet)
+      let ws = null;
+      for(const shName of wb.SheetNames){
+        const candidate = wb.Sheets[shName];
+        const r0 = XLSX.utils.sheet_to_json(candidate,{header:1})[0]||[];
+        const h0 = r0.map(h=>String(h||'').toLowerCase());
+        if(h0.some(h=>h.includes('kode'))&&h0.some(h=>h.includes('nama'))){
+          ws = candidate; break;
+        }
+      }
+      if(!ws){alert('Sheet dengan kolom Kode Siswa & Nama tidak ditemukan di file ini.');return;}
       const rows = XLSX.utils.sheet_to_json(ws, {header:1});
       // Baca header - mapping by nama kolom (tahan terhadap kolom No/Status ekstra)
       const hdr = (rows[0]||[]).map(h=>String(h||'').toLowerCase().trim());
