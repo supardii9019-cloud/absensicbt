@@ -1622,8 +1622,8 @@ function LoginScreen({onLogin}) {
     }
     setLoading(true);setError('');
     try {
-      const students=await DB.getStudents();
-      const stu=students.find(s=>s.studentCode.toLowerCase()===stuCode.toLowerCase()&&s.password===stuPass&&s.active);
+      const stu=students.find(s=>(s.nis&&s.nis.toLowerCase()===stuCode.toLowerCase()||s.studentCode.toLowerCase()===stuCode.toLowerCase())&&s.password===stuPass&&s.active);
+      if(!stu){setError('NIS atau password salah');setLoading(false);return;}
       if(!stu){setError('ID Siswa atau password salah');setLoading(false);return;}
       const sv=settings||await DB.getSettings();
       if(sv.deviceLock&&stu.deviceId&&stu.deviceId!==devInfo.id){
@@ -1680,7 +1680,7 @@ function LoginScreen({onLogin}) {
               h('button',{onClick:loginGuru,disabled:!guruUser||!guruPass||loading,style:{marginTop:'4px',padding:'14px',borderRadius:'12px',fontFamily:ORB,fontWeight:600,fontSize:'12px',letterSpacing:'0.2em',textTransform:'uppercase',background:'rgba(250,204,21,.1)',color:'#facc15',border:'1px solid rgba(250,204,21,.3)',cursor:'pointer',opacity:(!guruUser||!guruPass||loading)?0.3:1,width:'100%'}},loading?'Memuat...':'\uD83D\uDC68\u200D\uD83C\uDFEB Masuk')
             )
             :h(Fragment,null,
-              h('div',null,h('label',{style:LBL},'ID Siswa'),h('input',{className:'di',type:'text',value:stuCode,onChange:e=>setStuCode(e.target.value),onKeyDown:e=>e.key==='Enter'&&loginStudent(),placeholder:'SIS001',style:inSt})),
+              h('div',null,h('label',{style:LBL},'ID Siswa'),h('input',{className:'di',type:'text',value:stuCode,onChange:e=>setStuCode(e.target.value),onKeyDown:e=>e.key==='Enter'&&loginStudent(),placeholder:'Masukkan NIS',style:inSt})),
               h('div',null,h('label',{style:LBL},'Password'),
                 h('div',{style:{position:'relative'}},
                   h('input',{className:'di',type:showPass?'text':'password',value:stuPass,onChange:e=>setStuPass(e.target.value),onKeyDown:e=>e.key==='Enter'&&loginStudent(),placeholder:'••••••',style:Object.assign({},inSt,{paddingRight:'48px'})}),
@@ -2443,6 +2443,27 @@ function StudentLeave({student,leaves,onReload,onBack}) {
 }
 
 function StudentProfile({student,records,settings,onBack}) {
+  const [editPw,setEditPw]=useState(false);
+  const [pwOld,setPwOld]=useState('');
+  const [pwNew,setPwNew]=useState('');
+  const [pwNew2,setPwNew2]=useState('');
+  const [pwMsg,setPwMsg]=useState('');
+  const [pwLoading,setPwLoading]=useState(false);
+  const handleChangePw=async()=>{
+    if(!pwOld||!pwNew||!pwNew2){setPwMsg('Semua field wajib diisi');return;}
+    if(pwOld!==student.password){setPwMsg('Password lama salah');return;}
+    if(pwNew.length<4){setPwMsg('Password baru minimal 4 karakter');return;}
+    if(pwNew!==pwNew2){setPwMsg('Konfirmasi password tidak cocok');return;}
+    setPwLoading(true);
+    try{
+      await DB.saveStudent(Object.assign({},student,{password:pwNew}));
+      student.password=pwNew;
+      setPwMsg('✓ Password berhasil diubah!');
+      setPwOld('');setPwNew('');setPwNew2('');
+      setTimeout(()=>{setEditPw(false);setPwMsg('');},1800);
+    }catch(e){setPwMsg('Gagal: '+e.message);}
+    setPwLoading(false);
+  };
   const myRecs=records.filter(r=>r.studentId===student.id);
   const total=myRecs.length;const onTime=myRecs.filter(r=>r.clockIn&&!isLate(r.clockIn,settings.schoolStart)).length;
   const lateCount=myRecs.filter(r=>r.clockIn&&isLate(r.clockIn,settings.schoolStart)).length;
@@ -2471,6 +2492,19 @@ function StudentProfile({student,records,settings,onBack}) {
     ),
     h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'8px'}},
       [{l:'Total',v:total,c:'#00f0ff'},{l:'Tepat',v:onTime,c:'#00ff88'},{l:'Telat',v:lateCount,c:'#ff8800'}].map((s,i)=>h('div',{key:i,style:Object.assign({},gl,{borderRadius:'12px',padding:'12px',border:'1px solid var(--border)',textAlign:'center'})},h('p',{style:{fontFamily:ORB,fontSize:'18px',fontWeight:'bold',color:s.c}},s.v),h('p',{style:{color:'var(--text-muted)',fontSize:'8px',fontFamily:MONO,marginTop:'4px'}},s.l)))
+    ),
+    h('div',{style:Object.assign({},gl,{borderRadius:'16px',padding:'20px',border:'1px solid rgba(0,240,255,.15)'})} ,
+      h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:editPw?'16px':'0'}},
+        h('p',{style:{fontFamily:ORB,fontSize:'12px',color:'var(--text-secondary)',letterSpacing:'0.1em',textTransform:'uppercase'}},'\uD83D\uDD12 Ganti Password'),
+        h('button',{onClick:()=>{setEditPw(!editPw);setPwMsg('');},style:{padding:'6px 14px',borderRadius:'8px',fontSize:'11px',fontFamily:MONO,cursor:'pointer',background:editPw?'rgba(255,80,80,.15)':'rgba(0,240,255,.1)',color:editPw?'#ff5050':'var(--accent)',border:'1px solid '+(editPw?'rgba(255,80,80,.3)':'rgba(0,240,255,.3)')}},editPw?'Batal':'Edit')
+      ),
+      editPw&&h('div',{style:{display:'flex',flexDirection:'column',gap:'10px',marginTop:'4px'}},
+        h('input',{className:'di',type:'password',placeholder:'Password lama',value:pwOld,onChange:e=>setPwOld(e.target.value),style:{padding:'10px 12px',borderRadius:'8px',fontSize:'13px'}}),
+        h('input',{className:'di',type:'password',placeholder:'Password baru (min 4 karakter)',value:pwNew,onChange:e=>setPwNew(e.target.value),style:{padding:'10px 12px',borderRadius:'8px',fontSize:'13px'}}),
+        h('input',{className:'di',type:'password',placeholder:'Konfirmasi password baru',value:pwNew2,onChange:e=>setPwNew2(e.target.value),onKeyDown:e=>e.key==='Enter'&&handleChangePw(),style:{padding:'10px 12px',borderRadius:'8px',fontSize:'13px'}}),
+        pwMsg&&h('p',{style:{fontSize:'12px',textAlign:'center',color:pwMsg.startsWith('\u2713')?'#00ff88':'#ff5050',fontFamily:MONO}},pwMsg),
+        h('button',{onClick:handleChangePw,disabled:pwLoading,style:{padding:'10px',borderRadius:'10px',fontSize:'13px',fontFamily:ORB,cursor:'pointer',background:'rgba(0,240,255,.15)',color:'var(--accent)',border:'1px solid rgba(0,240,255,.3)',letterSpacing:'0.1em'}},pwLoading?'Menyimpan...':'Simpan Password')
+      )
     )
   );
 }
