@@ -1622,9 +1622,9 @@ function LoginScreen({onLogin}) {
     }
     setLoading(true);setError('');
     try {
+      const students=await DB.getStudents();
       const stu=students.find(s=>(s.nis&&s.nis.toLowerCase()===stuCode.toLowerCase()||s.studentCode.toLowerCase()===stuCode.toLowerCase())&&s.password===stuPass&&s.active);
       if(!stu){setError('NIS atau password salah');setLoading(false);return;}
-      if(!stu){setError('ID Siswa atau password salah');setLoading(false);return;}
       const sv=settings||await DB.getSettings();
       if(sv.deviceLock&&stu.deviceId&&stu.deviceId!==devInfo.id){
         setError('Perangkat tidak dikenali!\nDevice: '+devInfo.id+'\nTerdaftar: '+(stu.deviceInfo&&stu.deviceInfo.name||stu.deviceId)+'\nHubungi Admin untuk reset.');
