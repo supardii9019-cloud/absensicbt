@@ -1633,10 +1633,20 @@ function LoginScreen({onLogin}) {
       const stu=students.find(s=>(s.nis&&s.nis.toLowerCase()===stuCode.toLowerCase()||s.studentCode.toLowerCase()===stuCode.toLowerCase())&&s.password===stuPass&&s.active);
       if(!stu){setError('NIS atau password salah');setLoading(false);return;}
       const sv=settings||await DB.getSettings();
-      if(sv.deviceLock&&stu.deviceId&&stu.deviceId!==devInfo.id){
-        setError('Perangkat tidak dikenali!\nDevice: '+devInfo.id+'\nTerdaftar: '+(stu.deviceInfo&&stu.deviceInfo.name||stu.deviceId)+'\nHubungi Admin untuk reset.');
-        await DB.addLog(stu.name,'Login Ditolak','Device mismatch');setLoading(false);return;
+      if(sv.deviceLock){
+        // Cek apakah device ini sudah terdaftar ke siswa LAIN
+        const ownerOther=students.find(s=>s.id!==stu.id&&s.deviceId&&s.deviceId===devInfo.id);
+        if(ownerOther){
+          setError('Perangkat ini sudah terdaftar atas nama: '+ownerOther.name+'\nSatu perangkat hanya untuk 1 akun siswa.');
+          await DB.addLog(stu.name,'Login Ditolak','Device milik '+ownerOther.name);setLoading(false);return;
+        }
+        // Cek apakah siswa ini sudah terdaftar di perangkat LAIN
+        if(stu.deviceId&&stu.deviceId!==devInfo.id){
+          setError('Akun ini sudah terdaftar di perangkat lain.\nTerdaftar: '+(stu.deviceInfo&&stu.deviceInfo.name||stu.deviceId)+'\nHubungi admin untuk reset perangkat.');
+          await DB.addLog(stu.name,'Login Ditolak','Device mismatch');setLoading(false);return;
+        }
       }
+      // Daftarkan device jika belum ada
       if(!stu.deviceId){await DB.updateStudentDevice(stu.id,devInfo.id,devInfo);stu.deviceId=devInfo.id;stu.deviceInfo=devInfo;}
       await DB.addLog(stu.name,'Login',stu.studentCode);
       onLogin({role:'student',student:stu});
@@ -1687,7 +1697,7 @@ function LoginScreen({onLogin}) {
               h('button',{onClick:loginGuru,disabled:!guruUser||!guruPass||loading,style:{marginTop:'4px',padding:'14px',borderRadius:'12px',fontFamily:ORB,fontWeight:600,fontSize:'12px',letterSpacing:'0.2em',textTransform:'uppercase',background:'rgba(250,204,21,.1)',color:'#facc15',border:'1px solid rgba(250,204,21,.3)',cursor:'pointer',opacity:(!guruUser||!guruPass||loading)?0.3:1,width:'100%'}},loading?'Memuat...':'\uD83D\uDC68\u200D\uD83C\uDFEB Masuk')
             )
             :h(Fragment,null,
-              h('div',null,h('label',{style:LBL},'ID Siswa'),h('input',{className:'di',type:'text',value:stuCode,onChange:e=>setStuCode(e.target.value),onKeyDown:e=>e.key==='Enter'&&loginStudent(),placeholder:'Masukkan NIS',style:inSt})),
+              h('div',null,h('label',{style:LBL},'NIS'),h('input',{className:'di',type:'text',value:stuCode,onChange:e=>setStuCode(e.target.value),onKeyDown:e=>e.key==='Enter'&&loginStudent(),placeholder:'Masukkan NIS',style:inSt})),
               h('div',null,h('label',{style:LBL},'Password'),
                 h('div',{style:{position:'relative'}},
                   h('input',{className:'di',type:showPass?'text':'password',value:stuPass,onChange:e=>setStuPass(e.target.value),onKeyDown:e=>e.key==='Enter'&&loginStudent(),placeholder:'••••••',style:Object.assign({},inSt,{paddingRight:'48px'})}),
@@ -1703,7 +1713,7 @@ function LoginScreen({onLogin}) {
         h('p',{style:{color:'var(--accent-dim)',fontSize:'9px',fontFamily:MONO,letterSpacing:'0.15em',textAlign:'center',marginBottom:'8px'}},'\uD83C\uDFAE AKUN DEMO (tanpa database)'),
         h('div',{style:{display:'grid',gridTemplateColumns:'1fr',gap:'3px'}},
           h('p',{style:{color:'var(--text-muted)',fontSize:'10px',fontFamily:MONO}},'\uD83D\uDEE1\uFE0F Admin \u2014 demo.admin / demo123'),
-          h('p',{style:{color:'var(--text-muted)',fontSize:'10px',fontFamily:MONO}},'\uD83C\uDF93 Siswa \u2014 ID: DEMO01 / demo123'),
+          h('p',{style:{color:'var(--text-muted)',fontSize:'10px',fontFamily:MONO}},'\uD83C\uDF93 Siswa \u2014 NIS/ID: DEMO01 / demo123'),
           h('p',{style:{color:'var(--text-muted)',fontSize:'10px',fontFamily:MONO}},'\uD83C\uDFEB Wali Kelas \u2014 demo.wali / demo123'),
           h('p',{style:{color:'var(--text-muted)',fontSize:'10px',fontFamily:MONO}},'\uD83D\uDCDA Guru Mapel \u2014 demo.guru / demo123')
         )
@@ -5836,6 +5846,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
           loading?h(LoadingScreen,{msg:'Memuat...'}):h(Fragment,null,
             page==='home'&&h(StudentHome,{student,records,settings,school:settings,announcements:anns,leaves,onOpenCamera:act=>{setCamAction(act);setPage('camera');}}),
             page==='history'&&h(StudentHistory,{onBack:()=>setPage('home'),student,records,settings}),
+        page==='calendar'&&h(StudentCalendar,{onBack:()=>setPage('home'),student,records,settings,leaves}),
             page==='kartu'&&h(StudentKartu,{onBack:()=>setPage('home'),student,settings}),
             page==='cbt'&&h(StudentCBT,{student,settings,isDemo,onBack:()=>setPage('home'),onExamStart:setActiveExam}),
             page==='leave'&&h(StudentLeave,{onBack:()=>setPage('home'),student,leaves,onReload:reload,isDemo}),
@@ -5871,7 +5882,7 @@ function StudentPanel({student,onLogout,isDemo=false}) {
       page==='calendar'&&h(StudentCalendar,{onBack:()=>setPage('home'),student,records,settings,leaves}),
       page==='kartu'&&h(StudentKartu,{onBack:()=>setPage('home'),student,settings}),
       page==='cbt'&&h(StudentCBT,{student,settings,isDemo,onBack:()=>setPage('home'),onExamStart:setActiveExam}),
-      page==='leave'&&h(StudentLeave,{onBack:()=>setPage('home'),student,leaves,onReload:reload}),
+      page==='leave'&&h(StudentLeave,{onBack:()=>setPage('home'),student,leaves,onReload:reload,isDemo}),
       page==='profile'&&h(StudentProfile,{onBack:()=>setPage('home'),student,records,settings})
     ),
     h(NavBar,{items:nav,active:page,onSelect:setPage}),
