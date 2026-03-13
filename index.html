@@ -650,18 +650,24 @@ const importStudentsExcel = (file, existingStudents, onImport) => {
       const wb = XLSX.read(e.target.result, {type:'binary'});
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, {header:1});
-      // Skip header row
+      // Baca header - mapping by nama kolom (tahan terhadap kolom No/Status ekstra)
+      const hdr = (rows[0]||[]).map(h=>String(h||'').toLowerCase().trim());
+      const ci = (ns)=>{for(const n of ns){const x=hdr.findIndex(h=>h.includes(n));if(x>=0)return x;}return -1;};
+      const iCode=ci(['kode']), iName=ci(['nama']), iPass=ci(['password','pass','sandi']);
+      const iKelas=ci(['kelas']), iNis=ci(['nis']), iPhone=ci(['hp','phone','telepon','wa']);
+      if(iCode<0||iName<0){alert('Format tidak dikenali. Pastikan ada kolom: Kode Siswa & Nama Lengkap');return;}
       const newStudents = [];
       const errors = [];
       for(let i=1; i<rows.length; i++){
         const row = rows[i];
-        if(!row || !row[0] || !row[1]) continue;
-        const code = String(row[0]).trim();
-        const name = String(row[1]).trim();
-        const pass = String(row[2]||'123456').trim();
-        const kelas = String(row[3]||'').trim();
-        const nis = String(row[4]||'').trim();
-        const phone = String(row[5]||'').trim();
+        if(!row||row.length===0) continue;
+        const code = iCode>=0&&row[iCode]!=null?String(row[iCode]).trim():'';
+        const name = iName>=0&&row[iName]!=null?String(row[iName]).trim():'';
+        if(!code||!name||name.toLowerCase().includes('contoh')) continue;
+        const pass = iPass>=0&&row[iPass]!=null?String(row[iPass]).trim():'123456';
+        const kelas = iKelas>=0&&row[iKelas]!=null?String(row[iKelas]).trim():'';
+        const nis = iNis>=0&&row[iNis]!=null?String(row[iNis]).trim():'';
+        const phone = iPhone>=0&&row[iPhone]!=null?String(row[iPhone]).trim():'';
         if(existingStudents.some(s=>s.studentCode.toLowerCase()===code.toLowerCase())){
           errors.push('ID '+code+' sudah ada, dilewati');
           continue;
@@ -6577,6 +6583,10 @@ function showInstallModal(){
 navigator.serviceWorker.addEventListener('message',function(event){
   if(event.data&&event.data.type==='SW_UPDATED'){window.location.reload();return;}
   if(event.data&&event.data.type==='CBT_CACHE_CLEARED'){
+    var keys=Object.keys(sessionStorage).filter(function(k){return k.startsWith('cbt_q_');});
+    keys.forEach(function(k){sessionStorage.removeItem(k);});
+  }
+});
 </script>
 
 </body>
