@@ -648,6 +648,12 @@ const importStudentsExcel = (file, existingStudents, onImport) => {
   reader.onload = async (e) => {
     try {
       const wb = XLSX.read(e.target.result, {type:'binary'});
+      // DEBUG: tampilkan nama semua sheet
+      const sheetInfo = wb.SheetNames.map((n,i)=>{
+        const r0=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1})[0]||[];
+        return n+': ['+r0.slice(0,4).join(', ')+']';
+      }).join('\n');
+      alert('Sheet ditemukan ('+wb.SheetNames.length+'):\n'+sheetInfo);
       // Cari sheet yang punya kolom 'Kode Siswa' dan 'Nama' (scan semua sheet)
       let ws = null;
       for(const shName of wb.SheetNames){
@@ -1834,7 +1840,7 @@ function AdminStudents({students,onReload,settings,onBack}) {
         ...(fKelasFilter?[{label:'Excel '+fKelasFilter,onClick:()=>exportStudentsExcel(students,fKelasFilter)}]:[]),
       ]},
       {label:'🪪 Cetak Kartu',color:'#a855f7',bg:'rgba(168,85,247,.1)',border:'rgba(168,85,247,.3)',onClick:()=>cetakKartuSiswa(students,fKelasFilter||null)},
-      {label:'📥 Import',color:'#ff8800',bg:'rgba(255,136,0,.1)',border:'rgba(255,136,0,.3)',isFile:true,onFile:e=>{if(e.target.files[0])importStudentsExcel(e.target.files[0],students,async(newList,errors)=>{for(const s of newList)await DB.saveStudent(s);await DB.addLog('Admin','Import Siswa',newList.length+' siswa');if(errors.length)alert('Import selesai. '+newList.length+' berhasil.');await onReload();e.target.value='';})}},
+      {label:'📥 Import',color:'#ff8800',bg:'rgba(255,136,0,.1)',border:'rgba(255,136,0,.3)',isFile:true,onFile:e=>{if(e.target.files[0])importStudentsExcel(e.target.files[0],students,async(newList,errors)=>{for(const s of newList)await DB.saveStudent(s);await DB.addLog('Admin','Import Siswa',newList.length+' siswa');if(errors.length)alert('Import selesai. Berhasil: '+newList.length+', Dilewati: '+errors.length);else alert('Import selesai. '+newList.length+' siswa berhasil diimport.');await onReload();e.target.value='';})}},
     ]}),
     h('div',{style:{display:'flex',gap:'8px',flexWrap:'wrap',marginBottom:'8px'}},
       h('p',{style:{color:'var(--text-muted)',fontSize:'9px',fontFamily:MONO,width:'100%',letterSpacing:'0.1em'}},'FILTER KELAS:'),
