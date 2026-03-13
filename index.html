@@ -377,18 +377,25 @@ const getGeo = () => new Promise(res => {
 });
 
 function genDevice() {
-  let cvDataUrl='data:';
-  try{const cv=document.createElement('canvas'),ctx=cv.getContext('2d');if(ctx){cv.width=200;cv.height=50;
-  ctx.textBaseline='top';ctx.font='14px Arial';ctx.fillStyle='#f60';ctx.fillRect(125,1,62,20);
-  ctx.fillStyle='#069';ctx.fillText('DeviceFingerprint',2,15);ctx.fillStyle='rgba(102,204,0,0.7)';ctx.fillText('AbsenKu2024',4,35);
-  cvDataUrl=cv.toDataURL();}}catch(e){}
-  const raw=[cvDataUrl,navigator.userAgent,navigator.language,screen.width+'x'+screen.height,screen.colorDepth,new Date().getTimezoneOffset(),navigator.hardwareConcurrency||0,navigator.deviceMemory||0,navigator.maxTouchPoints||0,navigator.platform||''].join('|');
-  let hash=0; for(let i=0;i<raw.length;i++){hash=((hash<<5)-hash)+raw.charCodeAt(i);hash=hash&hash;}
-  const id='DVC-'+Math.abs(hash).toString(36).toUpperCase().padStart(8,'0').slice(0,8);
+  // Pakai localStorage agar ID konsisten tiap sesi
+  const LS_KEY = 'absensiku_device_id';
+  let savedId = null;
+  try { savedId = localStorage.getItem(LS_KEY); } catch(e){}
+  if(!savedId) {
+    let cvDataUrl='data:';
+    try{const cv=document.createElement('canvas'),ctx=cv.getContext('2d');if(ctx){cv.width=200;cv.height=50;
+      ctx.textBaseline='top';ctx.font='14px Arial';ctx.fillStyle='#f60';ctx.fillRect(125,1,62,20);
+      ctx.fillStyle='#069';ctx.fillText('DeviceFingerprint',2,15);ctx.fillStyle='rgba(102,204,0,0.7)';ctx.fillText('AbsenKu2024',4,35);
+      cvDataUrl=cv.toDataURL();}}catch(e){}
+    const raw=[cvDataUrl,navigator.userAgent,navigator.language,screen.width+'x'+screen.height,screen.colorDepth,new Date().getTimezoneOffset(),navigator.hardwareConcurrency||0,navigator.deviceMemory||0,navigator.maxTouchPoints||0,navigator.platform||''].join('|');
+    let hash=0; for(let i=0;i<raw.length;i++){hash=((hash<<5)-hash)+raw.charCodeAt(i);hash=hash&hash;}
+    savedId='DVC-'+Math.abs(hash).toString(36).toUpperCase().padStart(8,'0').slice(0,8);
+    try { localStorage.setItem(LS_KEY, savedId); } catch(e){}
+  }
   const ua=navigator.userAgent;
   let browser='Unknown'; if(ua.includes('Firefox'))browser='Firefox'; else if(ua.includes('Edg'))browser='Edge'; else if(ua.includes('Chrome'))browser='Chrome'; else if(ua.includes('Safari'))browser='Safari';
   let os='Unknown'; if(ua.includes('Windows'))os='Windows'; else if(ua.includes('Mac OS'))os='macOS'; else if(ua.includes('Android'))os='Android'; else if(ua.includes('iPhone')||ua.includes('iPad'))os='iOS'; else if(ua.includes('Linux'))os='Linux';
-  return {id, name:`${browser} on ${os}`, browser, os, screen:`${screen.width}x${screen.height}`, registeredAt:new Date().toISOString()};
+  return {id:savedId, name:`${browser} on ${os}`, browser, os, screen:`${screen.width}x${screen.height}`, registeredAt:new Date().toISOString()};
 }
 
 // ================================================================
