@@ -3826,7 +3826,7 @@ function AdminCBT({students,settings,isSuperAdmin,onBack}) {
     tab==='exams'&&h(CbtExamList,{exams,onReload:reload,onEdit:setEditExam,onEditQ:setEditQuestions,onDelete:async id=>{if(confirm('Hapus ujian ini?')){await DB.deleteCbtExam(id);reload();}}}),
     tab==='results'&&h(CbtResultAdmin,{exams,students,onReload:reload}),
 
-    editExam&&h(CbtExamModal,{exam:editExam,onClose:()=>setEditExam(null),onSave:async e=>{await DB.saveCbtExam(e);setEditExam(null);reload();}}),
+    editExam&&h(CbtExamModal,{exam:editExam,onClose:()=>setEditExam(null),onSave:async e=>{await DB.saveCbtExam(e);setEditExam(null);reload();},students}),
     editQuestions&&h(CbtQuestionsModal,{exam:editQuestions,onClose:()=>setEditQuestions(null)})
   );
 }
@@ -3869,14 +3869,15 @@ function CbtExamList({exams,onReload,onEdit,onEditQ,onDelete}) {
 }
 
 // ── Modal Buat/Edit Ujian ──────────────────────────────────────────
-function CbtExamModal({exam,onClose,onSave}) {
+function CbtExamModal({exam,onClose,onSave,students}) {
   const [f,setF]=useState({...exam,
     start_time: exam.start_time ? new Date(exam.start_time).toISOString().slice(0,16) : '',
     end_time:   exam.end_time   ? new Date(exam.end_time).toISOString().slice(0,16)   : '',
   });
   const upd=k=>v=>setF(p=>({...p,[k]:v}));
   const inSt={width:'100%',padding:'10px 12px',borderRadius:'10px',background:'var(--input-bg)',border:'1px solid var(--border)',color:'var(--text-primary)',fontFamily:MONO,fontSize:'12px',boxSizing:'border-box'};
-  const kelasOptions=['VII','VIII','IX','X','XI','XII','X IPA 1','X IPA 2','XI IPA 1','XI IPA 2','XII IPA 1','XII IPA 2','X IPS 1','XI IPS 1','XII IPS 1','Semua Kelas'];
+  const kelasFromStudents = [...new Set((students||[]).map(s=>s.kelas).filter(Boolean))].sort();
+const kelasOptions = [...new Set([...kelasFromStudents,'Semua Kelas'])];
 
   return h('div',{onClick:onClose,style:{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,.7)',backdropFilter:'blur(6px)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'16px',overflowY:'auto'}},
     h('div',{onClick:e=>e.stopPropagation(),style:{width:'min(500px,100%)',background:'var(--bg-panel-s)',borderRadius:'20px',border:'1px solid var(--accent-dim)',padding:'24px',display:'flex',flexDirection:'column',gap:'16px',marginTop:'16px'}},
@@ -5405,7 +5406,7 @@ function GuruCBT({teacher, students, isDemo,onBack}) {
       onDelete:async id=>{if(isDemo){alert('Mode Demo');return;}if(confirm('Hapus ujian?')){await DB.deleteCbtExam(id);reload();}}}),
     tab==='results'&&h(CbtResultAdmin,{exams}),
 
-    editExam&&h(CbtExamModal,{exam:editExam,onClose:()=>setEditExam(null),onSave:async e=>{await DB.saveCbtExam(e);setEditExam(null);reload();}}),
+    editExam&&h(CbtExamModal,{exam:editExam,onClose:()=>setEditExam(null),onSave:async e=>{await DB.saveCbtExam(e);setEditExam(null);reload();},students}),
     editQuestions&&h(CbtQuestionsModal,{exam:editQuestions,onClose:()=>setEditQuestions(null)})
   );
 }
