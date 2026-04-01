@@ -599,129 +599,7 @@ const DB = {
     });
   },
 };
-// ============================================================
-// EXPORT SOAL CBT KE DOCX (download)
-// ============================================================
-const exportQuestionsDocx = (questions, examTitle) => {
-  if(!questions||!questions.length){alert('Tidak ada soal untuk diexport.');return;}
-  const LTRS=['A','B','C','D','E'];
-  let content = examTitle+'\n';
-  content += '================================================================\n\n';
-  questions.forEach((q,i)=>{
-    const tipeLabel={pg:'[PG]',mcma:'[MCMA]',tf:'[B/S]',bs:'[B/S-M]',essay:'[ESSAY]'}[q.type]||'[PG]';
-    content += (i+1)+'. '+tipeLabel+' '+q.question+'\n';
-    if(q.type==='pg'||q.type==='mcma'){
-      (q.options||[]).forEach((opt,oi)=>{
-        if(opt) content += '   '+LTRS[oi]+'. '+opt+'\n';
-      });
-      const ans=Array.isArray(q.correct_answer)?q.correct_answer.join(','):q.correct_answer;
-      content += '   Jawaban: '+ans+'\n';
-    } else if(q.type==='tf'){
-      content += '   Jawaban: '+(q.correct_answer||'BENAR')+'\n';
-    } else if(q.type==='bs'){
-      (q.options||[]).forEach((opt,oi)=>{
-        const ans=Array.isArray(q.correct_answer)?q.correct_answer[oi]:'BENAR';
-        content += '   '+(oi+1)+'. '+opt+' → '+ans+'\n';
-      });
-    } else if(q.type==='essay'){
-      content += '   [Soal Essay - dinilai manual]\n';
-    }
-    content += '   Bobot: '+(q.score||1)+' poin\n\n';
-  });
 
-  // Buat file .txt yang bisa diedit dan diupload ulang
-  const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'soal_'+(examTitle||'ujian').replace(/\s+/g,'_')+'.txt';
-  a.click();
-};
-
-// ============================================================
-// IMPORT SOAL CBT DARI FILE TXT/DOC
-// Format: 1. [PG] Pertanyaan\n   A. Opsi\n   Jawaban: A
-// ============================================================
-const importQuestionsFromFile = (file, examId, orderStart, onImport) => {
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    try {
-      const text = e.target.result;
-      const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
-      const questions = [];
-      let cur = null;
-      const LTRS = ['A','B','C','D','E'];
-      const flush = () => { if(cur&&cur.question) questions.push(cur); cur=null; };
-
-      for(const line of lines){
-        // Deteksi nomor soal: "1. [PG] Teks" atau "1. Teks"
-        const matchQ = line.match(/^(\d+)\.\s*(?:\[(\w+)\]\s*)?(.+)/);
-        if(matchQ){
-          flush();
-          const type = (matchQ[2]||'pg').toLowerCase();
-          const typeMap = {pg:'pg',mcma:'mcma','b/s':'tf','b/s-m':'bs',essay:'essay',tf:'tf',bs:'bs'};
-          cur = {
-            id: uid(),
-            exam_id: examId,
-            type: typeMap[type]||'pg',
-            question: matchQ[3],
-            options: ['','','','',''],
-            correct_answer: 'A',
-            score: 1,
-            order_num: orderStart + questions.length
-          };
-          continue;
-        }
-        if(!cur) continue;
-
-        // Pilihan jawaban: "A. Teks" atau "   A. Teks"
-        const matchOpt = line.match(/^([A-E])\.\s*(.+)/i);
-        if(matchOpt){
-          const idx = LTRS.indexOf(matchOpt[1].toUpperCase());
-          if(idx>=0) cur.options[idx] = matchOpt[2];
-          continue;
-        }
-
-        // Pernyataan B/S-M: "1. Teks → BENAR"
-        const matchBS = line.match(/^(\d+)\.\s*(.+?)\s*→\s*(BENAR|SALAH)/i);
-        if(matchBS&&cur.type==='bs'){
-          const idx = parseInt(matchBS[1])-1;
-          if(!Array.isArray(cur.options)) cur.options=[];
-          if(!Array.isArray(cur.correct_answer)) cur.correct_answer=[];
-          cur.options[idx] = matchBS[2];
-          cur.correct_answer[idx] = matchBS[3].toUpperCase();
-          continue;
-        }
-
-        // Jawaban: "Jawaban: A" atau "Jawaban: A,B" atau "Jawaban: BENAR"
-        const matchAns = line.match(/^Jawaban:\s*(.+)/i);
-        if(matchAns&&cur){
-          const ans = matchAns[1].trim();
-          if(ans.includes(',')){
-            cur.correct_answer = ans.split(',').map(a=>a.trim().toUpperCase());
-            cur.type = 'mcma';
-          } else {
-            cur.correct_answer = ans.toUpperCase();
-          }
-          continue;
-        }
-
-        // Bobot: "Bobot: 2 poin"
-        const matchScore = line.match(/^Bobot:\s*(\d+)/i);
-        if(matchScore&&cur){
-          cur.score = parseInt(matchScore[1])||1;
-        }
-      }
-      flush();
-
-      if(!questions.length){alert('Tidak ada soal yang berhasil dibaca. Pastikan format file sesuai template.');return;}
-      const ok = confirm(questions.length+' soal berhasil dibaca dari file.\nTambahkan ke bank soal ujian ini?');
-      if(ok) onImport(questions);
-    } catch(err){
-      alert('Gagal membaca file: '+err.message);
-    }
-  };
-  reader.readAsText(file, 'utf-8');
-};
 const exportCSV = (records, students, settings) => {
   const hdr = ['Tanggal','Kode Siswa','Nama','Kelas','NIS','Jam Masuk','Status Masuk','Jam Pulang','Status Pulang','Device ID','Jarak Masuk'];
   const rows = records.map(r => {
@@ -4134,27 +4012,18 @@ function CbtQuestionsModal({exam,onClose}) {
           h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)',marginTop:'2px'}},questions.length+' soal terdaftar')
         ),
         h('div',{style:{display:'flex',gap:'8px'}},
-          h('button',{
-            onClick:function(){DB.getCbtQuestions(exam.id).then(function(qs){exportQuestionsDocx(qs,exam.title);});},
-            style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid rgba(0,255,136,.3)',background:'rgba(0,255,136,.08)',color:'#00ff88',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}
-          },'📥 Export TXT'),
-          h('label',{
-            style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',fontFamily:MONO,fontSize:'10px',display:'inline-flex',alignItems:'center'}
-          },
-            '📤 Import File',
-            h('input',{type:'file',accept:'.txt',style:{display:'none'},onChange:function(e){
-              if(!e.target.files||!e.target.files[0]) return;
-              var f=e.target.files[0];
-              importQuestionsFromFile(f,exam.id,questions.length,function(qs){
-                DB.saveCbtQuestionsBulk(qs).then(function(){reload();alert(qs.length+' soal berhasil diimport!');});
-              });
-              e.target.value='';
-            }})
-          ),
-          h('button',{onClick:()=>setShowImport(!showImport),style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📥 Import Teks'),
+          h('button',{onClick:()=>setShowImport(!showImport),style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📥 Import'),
           h('button',{onClick:newQ,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--accent-dim)',background:'var(--accent-bg)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'+Soal'),
           h('button',{onClick:onClose,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'✕ Tutup')
-        ),
+        )
+      ),
+
+      showImport&&h('div',{style:{padding:'14px',borderRadius:'12px',background:'rgba(0,240,255,.04)',border:'1px solid rgba(0,240,255,.15)'}},
+        h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)',marginBottom:'6px',lineHeight:'1.6'}},'Format per baris: 1. Pertanyaan|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|JAWABAN'),
+        h('textarea',{value:importText,onChange:e=>setImportText(e.target.value),rows:5,placeholder:'1. Ibukota Indonesia adalah?|A.Bandung|B.Jakarta|C.Surabaya|D.Medan|B',style:{...inSt,resize:'vertical'}}),
+        h('button',{onClick:handleImport,disabled:!importText.trim(),style:{marginTop:'8px',padding:'8px 16px',borderRadius:'8px',border:'1px solid var(--accent-dim)',background:'var(--accent-bg)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'10px',opacity:!importText.trim()?0.4:1}},'Import Soal')
+      ),
+
       loading?h(LoadingScreen,{msg:'Memuat soal...'}):
       questions.length===0?h('p',{style:{textAlign:'center',color:'var(--text-muted)',fontFamily:MONO,fontSize:'11px',padding:'24px'}},'Belum ada soal. Klik "+Soal" untuk menambah.'):
       h('div',{style:{display:'flex',flexDirection:'column',gap:'8px',maxHeight:'400px',overflowY:'auto'}},
