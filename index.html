@@ -948,7 +948,256 @@ const exportPDF = async (records, students, settings, mode, filterKelas) => {
   const fname = 'absensi_'+mode+'_'+(filterKelas?filterKelas.replace(/\s/g,'_')+'_':'')+todayStr()+'.pdf';
   doc.save(fname);
 };
+// ============================================================
+// DOWNLOAD TEMPLATE SOAL CBT (.docx) — Pure JS, tanpa server
+// Format: Nomor. Pertanyaan | A. Opsi | B. Opsi | ... | JAWABAN
+// ============================================================
+const downloadSoalTemplate = (examTitle) => {
+  const lines = [
+    'TEMPLATE SOAL CBT — ' + (examTitle||'Ujian'),
+    'Format: NomorSoal. Pertanyaan|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|JAWABAN',
+    'Contoh soal PG (Pilihan Ganda):',
+    '1. Ibukota Indonesia adalah?|A.Bandung|B.Jakarta|C.Surabaya|D.Medan|B',
+    '2. 2 + 2 = ?|A.3|B.4|C.5|D.6|B',
+    '',
+    'Untuk soal Benar/Salah, gunakan format:',
+    'TF. Matahari terbit dari timur.|BENAR',
+    '',
+    'Mulai soal Anda di bawah ini:',
+    '---',
+    '',
+  ];
+  const content = lines.join('\r\n');
+  // Buat file .txt yang bisa diimport kembali
+  // Untuk docx sesungguhnya, gunakan tombol "Download .docx" di bawah
+  const blob = new Blob([content], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'template_soal_' + (examTitle||'cbt').replace(/\s/g,'_') + '.txt';
+  a.click();
+};
 
+// ============================================================
+// DOWNLOAD SOAL CBT KE WORD DOCX — menggunakan docxjs via CDN
+// ============================================================
+const downloadSoalDocx = async (questions, examTitle) => {
+  // Lazy-load docx library
+  if (!window.docx) {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.umd.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+          BorderStyle, WidthType, ShadingType, AlignmentType, HeadingLevel } = window.docx;
+
+  const border = { style: BorderStyle.SINGLE, size: 1, color: 'AAAAAA' };
+  const borders = { top: border, bottom: border, left: border, right: border };
+
+  const makePara = (text, opts={}) => new Paragraph({
+    children: [new TextRun({ text, font: 'Arial', size: opts.size||22,
+      bold: opts.bold||false, color: opts.color||'000000' })],
+    spacing: { before: opts.before||60, after: opts.after||60 },
+    alignment: opts.align||AlignmentType.LEFT,
+  });
+
+  const children = [];
+
+  // Judul
+  children.push(new Paragraph({
+    heading: HeadingLevel.HEADING_1,
+    children: [new TextRun({ text: 'SOAL CBT: ' + (examTitle||'Ujian'), font:'Arial', size:32, bold:true, color:'1F4E79' })],
+    spacing: { before: 0, after: 240 },
+  }));
+
+  children.push(makePara(
+    'Format Import: Nomor. Pertanyaan|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|JAWABAN',
+    { color:'888888', size:18, before:0, after:240 }
+  ));
+
+  // Tabel soal
+  const headerRow = new TableRow({
+    children: [
+      new TableCell({ width:{size:600,type:WidthType.DXA}, borders, shading:{fill:'1F4E79',type:ShadingType.CLEAR},
+        margins:{top:80,bottom:80,left:120,right:120},
+        children:[new Paragraph({children:[new TextRun({text:'No',bold:true,color:'FFFFFF',font:'Arial',size:20})]})] }),
+      new TableCell({ width:{size:4000,type:WidthType.DXA}, borders, shading:{fill:'1F4E79',type:ShadingType.CLEAR},
+        margins:{top:80,bottom:80,left:120,right:120},
+        children:[new Paragraph({children:[new TextRun({text:'Pertanyaan',bold:true,color:'FFFFFF',font:'Arial',size:20})]})] }),
+      new TableCell({ width:{size:3000,type:WidthType.DXA}, borders, shading:{fill:'1F4E79',type:ShadingType.CLEAR},
+        margins:{top:80,bottom:80,left:120,right:120},
+        children:[new Paragraph({children:[new TextRun({text:'Pilihan A/B/C/D/E',bold:true,color:'FFFFFF',font:'Arial',size:20})]})] }),
+      new TableCell({ width:{size:800,type:WidthType.DXA}, borders, shading:{fill:'1F4E79',type:ShadingType.CLEAR},
+        margins:{top:80,bottom:80,left:120,right:120},
+        children:[new Paragraph({children:[new TextRun({text:'Jawaban',bold:true,color:'FFFFFF',font:'Arial',size:20})]})] }),
+      new TableCell({ width:{size:600,type:WidthType.DXA}, borders, shading:{fill:'1F4E79',type:ShadingType.CLEAR},
+        margins:{top:80,bottom:80,left:120,right:120},
+        children:[new Paragraph({children:[new TextRun({text:'Skor',bold:true,color:'FFFFFF',font:'Arial',size:20})]})] }),
+    ]
+  });
+
+  const dataRows = (questions||[]).map((q, idx) => {
+    const LTRS = ['A','B','C','D','E'];
+    const opsiStr = (q.options||[]).map((o,i) => LTRS[i]+'. '+o).join('\n');
+    const jawabanStr = Array.isArray(q.correct_answer) ? q.correct_answer.join(',') : (q.correct_answer||'—');
+    const rowFill = idx%2===0 ? 'FFFFFF' : 'EBF3FB';
+
+    const makeCell = (text, w) => new TableCell({
+      width: {size:w, type:WidthType.DXA}, borders,
+      shading: {fill:rowFill, type:ShadingType.CLEAR},
+      margins: {top:80,bottom:80,left:120,right:120},
+      children: text.split('\n').map(line =>
+        new Paragraph({children:[new TextRun({text:line,font:'Arial',size:18})]})
+      )
+    });
+
+    return new TableRow({ children: [
+      makeCell(String(idx+1), 600),
+      makeCell(q.question||'', 4000),
+      makeCell(opsiStr||({essay:'(Essay)',tf:'BENAR / SALAH',bs:'(Pernyataan B/S)'}[q.type]||'—'), 3000),
+      makeCell(jawabanStr, 800),
+      makeCell(String(q.score||1), 600),
+    ]});
+  });
+
+  children.push(new Table({
+    width: {size:9000, type:WidthType.DXA},
+    columnWidths: [600, 4000, 3000, 800, 600],
+    rows: [headerRow, ...dataRows],
+  }));
+
+  // Instruksi import
+  children.push(makePara('', {before:240,after:0}));
+  children.push(new Paragraph({
+    heading: HeadingLevel.HEADING_2,
+    children: [new TextRun({text:'Cara Import Ulang ke CBT',font:'Arial',size:26,bold:true,color:'1F4E79'})],
+    spacing:{before:240,after:120},
+  }));
+  [
+    '1. Salin baris soal ke format teks: Pertanyaan|A.OpsiA|B.OpsiB|C.OpsiC|D.OpsiD|JAWABAN',
+    '2. Buka halaman CBT Admin → pilih Ujian → Soal → Import',
+    '3. Tempel teks soal di kotak import, satu soal per baris',
+    '4. Klik tombol "Import Soal"',
+  ].forEach(t => children.push(makePara(t, {size:20})));
+
+  const doc = new Document({
+    sections:[{
+      properties:{page:{size:{width:12240,height:15840},margin:{top:1440,right:1440,bottom:1440,left:1440}}},
+      children
+    }]
+  });
+
+  const buffer = await Packer.toBuffer(doc);
+  const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'soal_' + (examTitle||'cbt').replace(/\s/g,'_') + '.docx';
+  a.click();
+};
+
+// ============================================================
+// IMPORT SOAL DARI FILE .DOCX / .TXT
+// Membaca file Word lalu parse teks per baris
+// ============================================================
+const importSoalFromDocx = (file, examId, existingCount, onImport) => {
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    let text = '';
+    try {
+      if (file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+        // Gunakan mammoth.js untuk ekstrak teks dari docx
+        if (!window.mammoth) {
+          await new Promise((res, rej) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+            s.onload = res; s.onerror = rej;
+            document.head.appendChild(s);
+          });
+        }
+        const arrayBuffer = e.target.result;
+        const result = await window.mammoth.extractRawText({arrayBuffer});
+        text = result.value;
+      } else {
+        // .txt
+        text = e.target.result;
+      }
+    } catch(err) {
+      alert('Gagal membaca file: ' + err.message);
+      return;
+    }
+
+    // Parse baris demi baris
+    const lines = text.split(/\r?\n/).map(l=>l.trim()).filter(l=>{
+      if(!l) return false;
+      // Skip baris header/instruksi
+      if(l.startsWith('TEMPLATE') || l.startsWith('Format:') || l.startsWith('Contoh') ||
+         l.startsWith('Untuk') || l.startsWith('Mulai') || l === '---' ||
+         l.startsWith('Cara Import') || l.startsWith('Soal CBT') || /^[0-9]+\.$/.test(l)) return false;
+      return true;
+    });
+
+    const questions = [];
+    const LTRS = ['A','B','C','D','E'];
+
+    lines.forEach((line, i) => {
+      // Hapus nomor di awal: "1. teks" → "teks"
+      const cleaned = line.replace(/^\d+\.\s*/, '').trim();
+      if(!cleaned) return;
+
+      const parts = cleaned.split('|').map(p => p.trim());
+      if(parts.length < 2) return;
+
+      const question = parts[0];
+      if(!question) return;
+
+      // Deteksi tipe: jika hanya 1 part setelah soal & BENAR/SALAH
+      if(parts.length === 2) {
+        const ans = parts[1].toUpperCase();
+        if(ans === 'BENAR' || ans === 'SALAH') {
+          questions.push({
+            id: uid(), exam_id: examId, type: 'tf',
+            question, options: [], correct_answer: ans,
+            score: 1, order_num: existingCount + questions.length + 1,
+            option_media: [], media_url: null, media_type: null
+          });
+          return;
+        }
+      }
+
+      // PG: bagian opsi A. B. C. D.
+      const rawOpts = parts.slice(1, parts.length - 1);
+      const answerPart = parts[parts.length - 1].toUpperCase().trim();
+      const options = rawOpts.map(o => o.replace(/^[A-Ea-e]\.\s*/, '').trim()).filter(Boolean);
+
+      if(options.length >= 2) {
+        questions.push({
+          id: uid(), exam_id: examId, type: 'pg',
+          question, options,
+          correct_answer: LTRS.includes(answerPart) ? answerPart : 'A',
+          score: 1, order_num: existingCount + questions.length + 1,
+          option_media: [], media_url: null, media_type: null
+        });
+      }
+    });
+
+    if(!questions.length) {
+      alert('Tidak ada soal valid ditemukan.\n\nPastikan format:\nPertanyaan|A.OpsiA|B.OpsiB|C.OpsiC|D.OpsiD|JAWABAN\n\nSatu soal per baris.');
+      return;
+    }
+
+    const ok = confirm(questions.length + ' soal ditemukan.\nImport ke ujian ini?');
+    if(!ok) return;
+    onImport(questions);
+  };
+
+  if(file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+    reader.readAsArrayBuffer(file);
+  } else {
+    reader.readAsText(file, 'UTF-8');
+  }
+};
 // ================================================================
 // STYLE CONSTANTS
 // ================================================================
@@ -4011,7 +4260,20 @@ function CbtQuestionsModal({exam,onClose}) {
           h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)',marginTop:'2px'}},questions.length+' soal terdaftar')
         ),
         h('div',{style:{display:'flex',gap:'8px'}},
-          h('button',{onClick:()=>setShowImport(!showImport),style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📥 Import'),
+         h('button',{onClick:()=>setShowImport(!showImport),style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📥 Import TXT'),
+h('button',{onClick:()=>downloadSoalDocx(questions, exam.title),style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid rgba(0,240,255,.3)',background:'rgba(0,240,255,.08)',color:'#00f0ff',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📄 Download .docx'),
+h('label',{style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid rgba(168,85,247,.3)',background:'rgba(168,85,247,.08)',color:'#a855f7',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},
+  '📤 Upload .docx',
+  h('input',{type:'file',accept:'.docx,.doc,.txt',style:{display:'none'},onChange:e=>{
+    const file=e.target.files[0]; if(!file) return;
+    importSoalFromDocx(file, exam.id, questions.length, async (newQs)=>{
+      await DB.saveCbtQuestionsBulk(newQs);
+      reload();
+      alert('✅ '+newQs.length+' soal berhasil diimport dari '+file.name);
+    });
+    e.target.value='';
+  }})
+),
           h('button',{onClick:newQ,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--accent-dim)',background:'var(--accent-bg)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'+Soal'),
           h('button',{onClick:onClose,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'✕ Tutup')
         )
