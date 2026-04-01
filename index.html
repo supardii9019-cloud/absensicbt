@@ -981,11 +981,52 @@ const downloadSoalTemplate = (examTitle) => {
 // DOWNLOAD SOAL CBT KE WORD DOCX — menggunakan docxjs via CDN
 // ============================================================
 // ============================================================
-// DOWNLOAD SOAL CBT KE .DOCX — Pure browser, tanpa library
-// Membuat file .docx dari XML + ZIP menggunakan JSZip
 // ============================================================
-const downloadSoalDocx = async (questions, examTitle) => {
-  // Load JSZip jika belum ada
+// DOWNLOAD TEMPLATE KOSONG SOAL PER TIPE — pilih tipe dulu
+// ============================================================// Ganti tombol '📄 Download .docx' dengan:
+h('div',{style:{position:'relative'}},
+  h('button',{
+    onClick:()=>setShowTemplateMenu(!showTemplateMenu),
+    style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid rgba(0,240,255,.3)',
+      background:'rgba(0,240,255,.08)',color:'#00f0ff',cursor:'pointer',
+      fontFamily:MONO,fontSize:'10px',display:'flex',alignItems:'center',gap:'4px'}},
+    '📄 Template',h('span',{style:{fontSize:'8px'}},showTemplateMenu?'▲':'▼')
+  ),
+  showTemplateMenu&&h('div',{
+    style:{position:'absolute',top:'calc(100% + 6px)',left:0,zIndex:300,
+      background:'var(--bg-panel-s)',border:'1px solid rgba(0,240,255,.3)',
+      borderRadius:'12px',minWidth:'200px',overflow:'hidden',
+      boxShadow:'0 8px 32px rgba(0,0,0,.6)'}},
+    [
+      {id:'pg',    label:'📋 Pilihan Ganda',       desc:'1 jawaban benar'},
+      {id:'mcma',  label:'☑️ Multi Jawaban',        desc:'bisa >1 benar'},
+      {id:'tf',    label:'✅ Benar / Salah',        desc:'pernyataan tunggal'},
+      {id:'bs',    label:'🔀 B/S Pernyataan',       desc:'beberapa pernyataan'},
+      {id:'essay', label:'✏️ Essay / Uraian',       desc:'dinilai manual'},
+    ].map((t,i)=>h('button',{
+      key:t.id,
+      onClick:()=>{ setShowTemplateMenu(false); downloadTemplateSoalDocx(t.id, exam.title); },
+      style:{display:'flex',alignItems:'center',justifyContent:'space-between',
+        width:'100%',padding:'10px 14px',background:'none',border:'none',
+        borderBottom:i<4?'1px solid rgba(255,255,255,.06)':'none',
+        color:'var(--text-secondary)',fontFamily:MONO,fontSize:'11px',
+        cursor:'pointer',textAlign:'left',gap:'8px'}},
+      h('span',null,t.label),
+      h('span',{style:{fontSize:'9px',color:'var(--text-dim)',fontFamily:MONO}},t.desc)
+    )),
+    // Divider + download soal existing
+    questions.length>0&&h('div',{style:{borderTop:'1px solid rgba(0,240,255,.15)',padding:'4px 0'}},
+      h('button',{
+        onClick:()=>{ setShowTemplateMenu(false); downloadSoalDocx(questions, exam.title); },
+        style:{display:'flex',alignItems:'center',width:'100%',padding:'10px 14px',
+          background:'none',border:'none',color:'#00f0ff',fontFamily:MONO,
+          fontSize:'11px',cursor:'pointer',gap:'6px'}},
+        '📥 Download Soal Existing ('+questions.length+')'
+      )
+    )
+  )
+),
+const downloadTemplateSoalDocx = async (tipe, examTitle) => {
   if (!window.JSZip) {
     await new Promise((res, rej) => {
       const s = document.createElement('script');
@@ -997,46 +1038,93 @@ const downloadSoalDocx = async (questions, examTitle) => {
   }
 
   const esc = t => String(t||'')
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&apos;');
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;');
 
+  const TYPE_META = {
+    pg:    { label:'Pilihan Ganda (PG)',       fill:'D6EAF8', hdr:'1A5276', text:'1A5276' },
+    mcma:  { label:'Multi Jawaban (MCMA)',      fill:'D5F5E3', hdr:'1E8449', text:'1E8449' },
+    tf:    { label:'Benar / Salah (TF)',        fill:'FEF9E7', hdr:'9A7D0A', text:'7D6608' },
+    bs:    { label:'B/S per Pernyataan',        fill:'FDEDEC', hdr:'922B21', text:'922B21' },
+    essay: { label:'Essay / Uraian',            fill:'F4ECF7', hdr:'6C3483', text:'6C3483' },
+  };
+
+  const INSTRUKSI = {
+    pg: [
+      'Kolom PERTANYAAN  : tulis teks soal',
+      'Kolom OPSI A–E    : tulis pilihan jawaban (minimal 2, maksimal 5)',
+      'Kolom JAWABAN     : tulis huruf jawaban benar, contoh: B',
+      'Kolom SKOR        : nilai poin soal ini (default 1)',
+      '',
+      'Contoh baris:',
+      'Ibukota Indonesia adalah?  |  Bandung  |  Jakarta  |  Surabaya  |  Medan  |  (kosong)  |  B  |  1',
+    ],
+    mcma: [
+      'Sama seperti PG, tapi kolom JAWABAN bisa berisi LEBIH DARI 1 huruf',
+      'Pisahkan dengan koma, contoh: A,C  atau  B,D,E',
+      '',
+      'Contoh baris:',
+      'Mana yang termasuk planet?  |  Venus  |  Matahari  |  Mars  |  Bulan  |  (kosong)  |  A,C  |  2',
+    ],
+    tf: [
+      'Kolom PERTANYAAN  : tulis pernyataan (bukan pertanyaan)',
+      'Kolom JAWABAN     : tulis BENAR atau SALAH (huruf kapital)',
+      'Tidak ada kolom opsi — cukup pernyataan dan jawaban',
+      '',
+      'Contoh baris:',
+      'Matahari terbit dari timur.  |  BENAR  |  1',
+    ],
+    bs: [
+      'Satu soal berisi BEBERAPA PERNYATAAN — tiap pernyataan dijawab BENAR/SALAH',
+      'Kolom PERNYATAAN 1–4 : isi tiap pernyataan (minimal 2, maksimal 4)',
+      'Kolom JAWABAN 1–4    : tulis BENAR atau SALAH untuk masing-masing pernyataan',
+      '',
+      'Contoh:',
+      'Pernyataan 1: Air mendidih pada 100°C  →  Jawaban 1: BENAR',
+      'Pernyataan 2: Es mencair pada 50°C     →  Jawaban 2: SALAH',
+    ],
+    essay: [
+      'Kolom PERTANYAAN  : tulis soal uraian',
+      'Kolom JAWABAN     : tulis kunci jawaban / rubrik penilaian (untuk arsip guru)',
+      'Kolom SKOR        : nilai maksimal soal ini',
+      '',
+      'Catatan: soal essay TIDAK otomatis dinilai oleh sistem.',
+      'Guru/admin perlu menilai manual setelah ujian selesai.',
+    ],
+  };
+
+  const HDR_COLOR = '1B2631';
   const LTRS = ['A','B','C','D','E'];
 
-  // Warna header tabel (hex tanpa #)
-  const HDR_COLOR = '1F4E79';
-  const ROW_ODD   = 'DDEEFF';
-  const ROW_EVEN  = 'FFFFFF';
-
-  // ── Helper: buat paragraf teks ──────────────────────────────
+  // ── Helper paragraf ─────────────────────────────────────────
   const para = (text, opts={}) => {
-    const sz  = opts.size  || 22;
-    const bold = opts.bold  ? '<w:b/>' : '';
-    const clr  = opts.color ? `<w:color w:val="${opts.color}"/>` : '';
-    const spBef = opts.before != null ? opts.before : 60;
-    const spAft = opts.after  != null ? opts.after  : 60;
-    const align = opts.align  ? `<w:jc w:val="${opts.align}"/>` : '';
+    const sz   = opts.size   || 22;
+    const bold = opts.bold   ? '<w:b/>' : '';
+    const clr  = opts.color  ? `<w:color w:val="${opts.color}"/>` : '';
+    const spB  = opts.before != null ? opts.before : 60;
+    const spA  = opts.after  != null ? opts.after  : 60;
+    const aln  = opts.align  ? `<w:jc w:val="${opts.align}"/>` : '';
     return `<w:p>
-      <w:pPr><w:spacing w:before="${spBef}" w:after="${spAft}"/>${align}</w:pPr>
-      <w:r><w:rPr>${bold}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/>${clr}<w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr>
-      <w:t xml:space="preserve">${esc(text)}</w:t></w:r>
+      <w:pPr><w:spacing w:before="${spB}" w:after="${spA}"/>${aln}</w:pPr>
+      <w:r><w:rPr>${bold}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/>${clr}
+        <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+      </w:rPr><w:t xml:space="preserve">${esc(text)}</w:t></w:r>
     </w:p>`;
   };
 
-  // ── Helper: sel tabel ───────────────────────────────────────
+  // ── Helper sel tabel ────────────────────────────────────────
   const cell = (content, widthDxa, fillHex, opts={}) => {
     const lines = String(content||'').split('\n');
-    const paragraphs = lines.map(line => {
-      const bold  = opts.bold  ? '<w:b/>' : '';
-      const color = opts.color || (fillHex !== ROW_ODD && fillHex !== ROW_EVEN ? 'FFFFFF' : '000000');
-      return `<w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr>
-        <w:r><w:rPr>${bold}<w:sz w:val="18"/><w:szCs w:val="18"/>
-          <w:color w:val="${color}"/>
+    const textColor = opts.color || '000000';
+    const bold = opts.bold ? '<w:b/>' : '';
+    const sz = opts.size || 18;
+    const paragraphs = lines.map(line =>
+      `<w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr>
+        <w:r><w:rPr>${bold}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/>
+          <w:color w:val="${textColor}"/>
           <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
-        </w:rPr><w:t xml:space="preserve">${esc(line)}</w:t></w:r></w:p>`;
-    }).join('');
+        </w:rPr><w:t xml:space="preserve">${esc(line)}</w:t></w:r></w:p>`
+    ).join('');
     return `<w:tc>
       <w:tcPr>
         <w:tcW w:w="${widthDxa}" w:type="dxa"/>
@@ -1047,100 +1135,145 @@ const downloadSoalDocx = async (questions, examTitle) => {
           <w:bottom w:w="80" w:type="dxa"/>
           <w:right w:w="120" w:type="dxa"/>
         </w:tcMar>
-      </w:tcPr>
-      ${paragraphs}
+      </w:tcPr>${paragraphs}
     </w:tc>`;
   };
 
-  // ── Bangun baris header ─────────────────────────────────────
+  const meta = TYPE_META[tipe] || TYPE_META['pg'];
+
+  // ── Definisi kolom per tipe ─────────────────────────────────
+  const KOLOM = {
+    pg: [
+      { label:'No',           w:400  },
+      { label:'Pertanyaan',   w:3200 },
+      { label:'Opsi A',       w:1000 },
+      { label:'Opsi B',       w:1000 },
+      { label:'Opsi C',       w:1000 },
+      { label:'Opsi D',       w:1000 },
+      { label:'Opsi E',       w:800  },
+      { label:'Jawaban',      w:600  },
+      { label:'Skor',         w:400  },
+    ],
+    mcma: [
+      { label:'No',           w:400  },
+      { label:'Pertanyaan',   w:3000 },
+      { label:'Opsi A',       w:900  },
+      { label:'Opsi B',       w:900  },
+      { label:'Opsi C',       w:900  },
+      { label:'Opsi D',       w:900  },
+      { label:'Opsi E',       w:700  },
+      { label:'Jawaban (mis. A,C)', w:800 },
+      { label:'Skor',         w:400  },
+    ],
+    tf: [
+      { label:'No',           w:400  },
+      { label:'Pernyataan',   w:6200 },
+      { label:'Jawaban (BENAR/SALAH)', w:1800 },
+      { label:'Skor',         w:600  },
+    ],
+    bs: [
+      { label:'No',           w:400  },
+      { label:'Judul Soal',   w:1800 },
+      { label:'Pernyataan 1', w:1400 },
+      { label:'Jwb 1',        w:600  },
+      { label:'Pernyataan 2', w:1400 },
+      { label:'Jwb 2',        w:600  },
+      { label:'Pernyataan 3', w:1400 },
+      { label:'Jwb 3',        w:600  },
+      { label:'Skor',         w:400  },
+    ],
+    essay: [
+      { label:'No',           w:400  },
+      { label:'Pertanyaan',   w:4000 },
+      { label:'Kunci Jawaban / Rubrik Penilaian', w:3600 },
+      { label:'Skor Max',     w:1000 },
+    ],
+  };
+
+  const kolom = KOLOM[tipe] || KOLOM['pg'];
+  const totalW = kolom.reduce((s,k)=>s+k.w,0);
+
+  // ── Header row ──────────────────────────────────────────────
   const headerRow = `<w:tr>
-    ${cell('No',       500,  HDR_COLOR, {bold:true})}
-    ${cell('Pertanyaan', 3800, HDR_COLOR, {bold:true})}
-    ${cell('Pilihan Jawaban', 3200, HDR_COLOR, {bold:true})}
-    ${cell('Jawaban', 900,  HDR_COLOR, {bold:true})}
-    ${cell('Skor',    600,  HDR_COLOR, {bold:true})}
+    ${kolom.map(k => cell(k.label, k.w, HDR_COLOR, {bold:true, color:'FFFFFF', size:20})).join('\n')}
   </w:tr>`;
 
-  // ── Bangun baris data ───────────────────────────────────────
-  const dataRows = (questions||[]).map((q, idx) => {
-    const fill = idx % 2 === 0 ? ROW_EVEN : ROW_ODD;
-    const opsi = (q.options||[]).map((o,i)=>LTRS[i]+'. '+o).join('\n');
-    const opsiStr = opsi || ({
-      essay: '(Essay — jawaban uraian)',
-      tf:    'BENAR / SALAH',
-      bs:    '(Benar/Salah per pernyataan)',
-    }[q.type] || '—');
-    const jawaban = Array.isArray(q.correct_answer)
-      ? q.correct_answer.join(', ')
-      : (q.correct_answer || '—');
-    return `<w:tr>
-      ${cell(idx+1,              500,  fill, {color:'000000'})}
-      ${cell(q.question||'',    3800, fill, {color:'000000'})}
-      ${cell(opsiStr,           3200, fill, {color:'000000'})}
-      ${cell(jawaban,            900, fill, {color:'000000'})}
-      ${cell(q.score||1,         600, fill, {color:'000000'})}
-    </w:tr>`;
-  });
+  // ── Baris contoh (diisi) ────────────────────────────────────
+  const CONTOH = {
+    pg:    ['1','Ibukota Indonesia adalah?','Bandung','Jakarta','Surabaya','Medan','','B','1'],
+    mcma:  ['1','Manakah yang merupakan planet?','Venus','Matahari','Mars','Bulan','','A,C','2'],
+    tf:    ['1','Matahari terbit dari arah timur.','BENAR','1'],
+    bs:    ['1','Sifat air','Air mendidih di 100°C','BENAR','Es mencair di 50°C','SALAH','Air berwujud cair normal','BENAR','2'],
+    essay: ['1','Jelaskan pengertian fotosintesis dan sebutkan faktor yang mempengaruhinya!','Fotosintesis adalah proses tumbuhan mengubah CO2 + H2O → glukosa + O2 menggunakan energi cahaya matahari. Faktor: cahaya, CO2, air, klorofil.','5'],
+  };
 
-  // ── Bagian instruksi ────────────────────────────────────────
-  const instruksi = [
-    'Cara export kembali ke Import CBT:',
-    '1. Salin teks soal ke format: Pertanyaan|A.OpsiA|B.OpsiB|C.OpsiC|D.OpsiD|JAWABAN',
-    '2. Di halaman CBT Admin, buka Soal lalu klik "Import TXT"',
-    '3. Tempel teks soal (satu soal per baris) lalu klik Import',
-    '',
-    'Contoh: Ibukota Indonesia?|A.Bandung|B.Jakarta|C.Surabaya|D.Medan|B',
-  ];
+  const contohData = CONTOH[tipe] || CONTOH['pg'];
+  const contohRow = `<w:tr>
+    ${kolom.map((k,i) => cell(contohData[i]||'', k.w, meta.fill, {color:meta.hdr, bold:i===0})).join('\n')}
+  </w:tr>`;
 
-  // ── Rakit document.xml ──────────────────────────────────────
+  // ── 10 baris kosong untuk diisi guru ───────────────────────
+  const emptyRows = Array.from({length:10}, (_, i) =>
+    `<w:tr>
+      ${kolom.map((k,j) => cell(j===0 ? String(i+2) : '', k.w, j===0?'EEEEEE':'FFFFFF', {color:'999999'})).join('\n')}
+    </w:tr>`
+  ).join('\n');
+
+  // ── Tabel gridCol ───────────────────────────────────────────
+  const gridCols = kolom.map(k=>`<w:gridCol w:w="${k.w}"/>`).join('\n');
+
+  // ── document.xml ───────────────────────────────────────────
   const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+<w:document
   xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
   xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
 <w:body>
 
-  ${para('SOAL CBT: ' + (examTitle||'Ujian'), {size:32, bold:true, color:'1F4E79', before:0, after:200})}
-  ${para('Jumlah soal: '+(questions||[]).length+' soal', {size:20, color:'555555', before:0, after:300})}
+  ${para('TEMPLATE SOAL CBT', {size:34, bold:true, color:'1B2631', before:0, after:100})}
+  ${para('Tipe: '+meta.label, {size:26, bold:true, color:meta.hdr, before:0, after:80})}
+  ${para((examTitle?'Ujian: '+examTitle+'   |   ':'')+'Tanggal: '+new Date().toLocaleDateString('id-ID',{day:'numeric',month:'long',year:'numeric'}), {size:18, color:'888888', before:0, after:300})}
+
+  ${para('PETUNJUK PENGISIAN', {size:22, bold:true, color:HDR_COLOR, before:0, after:100})}
+  ${INSTRUKSI[tipe].map(t=>para(t.startsWith('Contoh')||t.startsWith('Pernyataan')||t.startsWith('→')||t.startsWith('Air')||t.startsWith('Es')
+    ? t : t, {size:19, color: t==='' ? 'FFFFFF' : '333333', before:30, after:30})).join('\n')}
+
+  ${para('', {before:200, after:0})}
+  ${para('TABEL SOAL — isi mulai baris ke-2 (baris ke-1 adalah contoh)', {size:20, bold:true, color:HDR_COLOR, before:0, after:120})}
 
   <w:tbl>
     <w:tblPr>
-      <w:tblW w:w="9000" w:type="dxa"/>
+      <w:tblW w:w="${totalW}" w:type="dxa"/>
       <w:tblBorders>
-        <w:top    w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
-        <w:left   w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
-        <w:bottom w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
-        <w:right  w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
+        <w:top     w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
+        <w:left    w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
+        <w:bottom  w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
+        <w:right   w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
         <w:insideH w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
         <w:insideV w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
       </w:tblBorders>
-      <w:tblLook w:val="04A0"/>
     </w:tblPr>
-    <w:tblGrid>
-      <w:gridCol w:w="500"/>
-      <w:gridCol w:w="3800"/>
-      <w:gridCol w:w="3200"/>
-      <w:gridCol w:w="900"/>
-      <w:gridCol w:w="600"/>
-    </w:tblGrid>
+    <w:tblGrid>${gridCols}</w:tblGrid>
     ${headerRow}
-    ${dataRows.join('\n')}
+    ${contohRow}
+    ${emptyRows}
   </w:tbl>
 
-  ${para('', {before:240, after:0})}
-  ${para('Instruksi Import', {size:26, bold:true, color:'1F4E79', before:200, after:120})}
-  ${instruksi.map(t => para(t, {size:19, color:'333333'})).join('\n')}
+  ${para('', {before:300, after:0})}
+  ${para('Catatan:', {size:19, bold:true, color:'555555', before:0, after:60})}
+  ${para('• Setelah diisi, upload kembali file ini via tombol "Upload .docx" di halaman CBT Admin → Soal.', {size:18, color:'555555', before:0, after:40})}
+  ${para('• Atau salin isi tabel ke format teks: Pertanyaan|OpsiA|OpsiB|OpsiC|OpsiD|Jawaban lalu gunakan "Import TXT".', {size:18, color:'555555', before:0, after:40})}
+  ${para('• Hapus baris contoh (baris berwarna) sebelum upload jika tidak ingin ikut diimport.', {size:18, color:'888888', before:0, after:40})}
 
   <w:sectPr>
-    <w:pgSz w:w="12240" w:h="15840"/>
-    <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/>
+    <w:pgSz w:w="15840" w:h="12240" w:orient="landscape"/>
+    <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/>
   </w:sectPr>
 
 </w:body>
 </w:document>`;
 
-  // ── Rakit file-file .docx (ZIP) ─────────────────────────────
+  // ── ZIP → .docx ─────────────────────────────────────────────
   const zip = new window.JSZip();
-
   zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
@@ -1148,32 +1281,31 @@ const downloadSoalDocx = async (questions, examTitle) => {
   <Override PartName="/word/document.xml"
     ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
 </Types>`);
-
   zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1"
     Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
     Target="word/document.xml"/>
 </Relationships>`);
-
   zip.file('word/document.xml', docXml);
-
   zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
 </Relationships>`);
 
-  // Generate dan download
   try {
-    const blob = await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = 'soal_' + (examTitle||'cbt').replace(/\s+/g,'_') + '.docx';
+    const blob = await zip.generateAsync({
+      type:'blob',
+      mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    });
+    const url = URL.createObjectURL(blob);
+    const a   = document.createElement('a');
+    a.href    = url;
+    a.download = 'template_'+tipe+'_'+(examTitle||'cbt').replace(/\s+/g,'_')+'.docx';
     document.body.appendChild(a);
     a.click();
-    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+    setTimeout(()=>{ URL.revokeObjectURL(url); a.remove(); }, 1000);
   } catch(err) {
-    alert('Gagal membuat file: ' + err.message);
+    alert('Gagal membuat template: '+err.message);
   }
 };
 
@@ -4300,6 +4432,7 @@ function CbtQuestionsModal({exam,onClose}) {
   const [editQ,setEditQ]=useState(null);
   const [importText,setImportText]=useState('');
   const [showImport,setShowImport]=useState(false);
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
 
   const reload=async()=>{
     setLoading(true);
