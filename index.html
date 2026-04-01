@@ -951,7 +951,716 @@ const exportPDF = async (records, students, settings, mode, filterKelas) => {
 
 // ================================================================
 // STYLE CONSTANTS
+// ================================================================// ================================================================
+// PATCH LENGKAP: Tambahkan ke index.html AbsensiKu
+// Fitur: Download Template Soal DOCX + Upload/Import Soal dari DOCX
+//
+// CARA APPLY:
+// 1. Tambah CDN di <head> (setelah baris jsQR):
+//    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+//    <script src="https://unpkg.com/docx@9.6.1/build/index.umd.js"></script>
+//
+// 2. Paste semua fungsi di bawah ini ke dalam tag <script> utama,
+//    tepat SEBELUM baris:  const gl = {background:'var(--bg-panel)',...
+//
+// 3. Ganti fungsi CbtQuestionsModal yang lama dengan versi baru di bawah ini
 // ================================================================
+
+// ── Download Template Soal CBT sebagai DOCX ──────────────────────
+const downloadTemplateSoalDocx = async () => {
+  if (window.docx) {
+    await _downloadTemplateDenganDocxJs();
+  } else {
+    _downloadTemplateAsTxt();
+  }
+};
+
+function _downloadTemplateAsTxt() {
+  const content = `TEMPLATE SOAL CBT — AbsensiKu
+=====================================
+FORMAT: Isi sesuai contoh lalu simpan dan upload ke aplikasi.
+
+INFORMASI UJIAN
+---------------
+Judul Ujian    : [Isi judul ujian]
+Mata Pelajaran : [Nama mapel]
+Kelas          : [Contoh: XII IPA 1]
+Durasi (menit) : 60
+Dibuat oleh    : [Nama guru]
+
+=====================================
+PETUNJUK FORMAT SOAL
+- Setiap soal wajib punya baris Jawaban: dan Tipe:
+- Tipe: PG | MCMA | TF | BS | ESSAY
+- Pisahkan antar soal dengan baris kosong atau ---
+=====================================
+
+SOAL: Berapakah hasil dari 15 x 8?
+A. 100
+B. 110
+C. 120
+D. 130
+E. 140
+Jawaban: C
+Bobot: 1
+Tipe: PG
+---
+
+SOAL: Jelaskan pengertian fotosintesis secara singkat!
+Jawaban:
+Bobot: 5
+Tipe: ESSAY
+---
+
+SOAL: Pilih semua bilangan prima!
+A. 2
+B. 4
+C. 7
+D. 11
+E. 15
+Jawaban: A,C,D
+Bobot: 3
+Tipe: MCMA
+---
+
+SOAL: Air mendidih pada suhu 100 derajat Celsius pada tekanan normal.
+Jawaban: BENAR
+Bobot: 1
+Tipe: TF
+---
+
+SOAL: Pernyataan tentang sistem tata surya:
+A. Matahari adalah bintang
+B. Bulan adalah planet
+C. Bumi mengelilingi Matahari
+Jawaban: A:BENAR,B:SALAH,C:BENAR
+Bobot: 3
+Tipe: BS
+---
+`;
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'template_soal_cbt.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+async function _downloadTemplateDenganDocxJs() {
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+    AlignmentType, WidthType, BorderStyle, ShadingType } = window.docx;
+
+  const border = { style: BorderStyle.SINGLE, size: 1, color: "AAAAAA" };
+  const borders = { top: border, bottom: border, left: border, right: border };
+
+  const makeInfoRow = (label, val, shaded) => new TableRow({ children: [
+    new TableCell({
+      borders, width: { size: 2800, type: WidthType.DXA },
+      shading: shaded ? { fill: "EBF5FB", type: ShadingType.CLEAR } : undefined,
+      margins: { top: 70, bottom: 70, left: 120, right: 120 },
+      children: [new Paragraph({ children: [new TextRun({ text: label, bold: true, size: 20, font: "Arial" })] })]
+    }),
+    new TableCell({
+      borders, width: { size: 6200, type: WidthType.DXA },
+      margins: { top: 70, bottom: 70, left: 120, right: 120 },
+      children: [new Paragraph({ children: [new TextRun({ text: val, size: 20, font: "Arial", color: "777777" })] })]
+    })
+  ]});
+
+  const makeSoalPG = (no) => [
+    new Paragraph({ spacing: { before: 200, after: 80 }, children: [
+      new TextRun({ text: `${no}. `, bold: true, size: 22, font: "Arial" }),
+      new TextRun({ text: "[Tulis pertanyaan pilihan ganda di sini]", size: 22, font: "Arial", color: "333333" })
+    ]}),
+    ...['A','B','C','D','E'].map(l => new Paragraph({
+      indent: { left: 480 }, spacing: { before: 40, after: 40 },
+      children: [new TextRun({ text: `${l}. [Pilihan ${l}]`, size: 20, font: "Arial" })]
+    })),
+    new Paragraph({ spacing: { before: 60, after: 40 }, children: [
+      new TextRun({ text: "Jawaban: ", bold: true, size: 20, font: "Arial" }),
+      new TextRun({ text: "A", size: 20, font: "Arial", color: "CC0000" }),
+      new TextRun({ text: "    Bobot: ", bold: true, size: 20, font: "Arial" }),
+      new TextRun({ text: "1", size: 20, font: "Arial", color: "CC0000" }),
+      new TextRun({ text: "    Tipe: PG", size: 20, font: "Arial", color: "888888" }),
+    ]}),
+    new Paragraph({ spacing: { before: 0, after: 100 },
+      border: { bottom: { style: BorderStyle.DASHED, size: 4, color: "DDDDDD" } },
+      children: []
+    })
+  ];
+
+  const makeSoalEssay = (no) => [
+    new Paragraph({ spacing: { before: 200, after: 80 }, children: [
+      new TextRun({ text: `${no}. `, bold: true, size: 22, font: "Arial" }),
+      new TextRun({ text: "[Tulis pertanyaan essay di sini]", size: 22, font: "Arial", color: "333333" })
+    ]}),
+    new Paragraph({ indent: { left: 480 }, spacing: { before: 40, after: 60 }, children: [
+      new TextRun({ text: "Jawaban: (dinilai manual)    Bobot: ", bold: true, size: 20, font: "Arial" }),
+      new TextRun({ text: "5", size: 20, font: "Arial", color: "CC0000" }),
+      new TextRun({ text: "    Tipe: ESSAY", size: 20, font: "Arial", color: "888888" }),
+    ]}),
+    new Paragraph({ spacing: { before: 0, after: 100 },
+      border: { bottom: { style: BorderStyle.DASHED, size: 4, color: "DDDDDD" } },
+      children: []
+    })
+  ];
+
+  const makeSoalBS = (no) => [
+    new Paragraph({ spacing: { before: 200, after: 80 }, children: [
+      new TextRun({ text: `${no}. `, bold: true, size: 22, font: "Arial" }),
+      new TextRun({ text: "[Pertanyaan Benar/Salah multi-pernyataan]", size: 22, font: "Arial", color: "333333" })
+    ]}),
+    ...['A','B','C'].map((l, i) => new Paragraph({
+      indent: { left: 480 }, spacing: { before: 40, after: 40 },
+      children: [
+        new TextRun({ text: `${l}. [Pernyataan ${i+1}]    `, size: 20, font: "Arial" }),
+        new TextRun({ text: "Jawaban: ", bold: true, size: 20, font: "Arial" }),
+        new TextRun({ text: i === 1 ? "SALAH" : "BENAR", size: 20, font: "Arial", color: "CC0000" }),
+      ]
+    })),
+    new Paragraph({ spacing: { before: 60, after: 40 }, children: [
+      new TextRun({ text: "Jawaban: ", bold: true, size: 20, font: "Arial" }),
+      new TextRun({ text: "A:BENAR,B:SALAH,C:BENAR", size: 20, font: "Arial", color: "CC0000" }),
+      new TextRun({ text: "    Bobot: ", bold: true, size: 20, font: "Arial" }),
+      new TextRun({ text: "3", size: 20, font: "Arial", color: "CC0000" }),
+      new TextRun({ text: "    Tipe: BS", size: 20, font: "Arial", color: "888888" }),
+    ]}),
+    new Paragraph({ spacing: { before: 0, after: 100 },
+      border: { bottom: { style: BorderStyle.DASHED, size: 4, color: "DDDDDD" } },
+      children: []
+    })
+  ];
+
+  const guideRows = [
+    ["PG", "A / B / C / D / E", "1 jawaban benar"],
+    ["MCMA", "A,B / A,C,D", "Pisah koma, bisa lebih dari 1"],
+    ["TF", "BENAR / SALAH", "Satu pernyataan benar/salah"],
+    ["BS", "A:BENAR,B:SALAH,C:BENAR", "Multi-pernyataan B/S"],
+    ["ESSAY", "(kosong)", "Dinilai manual oleh guru"],
+  ];
+
+  const doc = new Document({
+    sections: [{
+      properties: {
+        page: {
+          size: { width: 11906, height: 16838 },
+          margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 }
+        }
+      },
+      children: [
+        // Judul
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 60 }, children: [
+          new TextRun({ text: "TEMPLATE SOAL CBT", bold: true, size: 36, font: "Arial", color: "1A5276" })
+        ]}),
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 0, after: 300 }, children: [
+          new TextRun({ text: "AbsensiKu — Sistem Absensi Digital", size: 22, font: "Arial", color: "888888" })
+        ]}),
+
+        // Info Ujian
+        new Paragraph({ spacing: { before: 0, after: 100 }, children: [
+          new TextRun({ text: "INFORMASI UJIAN", bold: true, size: 24, font: "Arial", color: "1A5276" })
+        ]}),
+        new Table({
+          width: { size: 9000, type: WidthType.DXA },
+          columnWidths: [2800, 6200],
+          rows: [
+            makeInfoRow("Judul Ujian", "[Judul ujian Anda]", true),
+            makeInfoRow("Mata Pelajaran", "[Nama mapel]", false),
+            makeInfoRow("Kelas", "[Contoh: XII IPA 1]", true),
+            makeInfoRow("Durasi (menit)", "60", false),
+            makeInfoRow("Dibuat oleh", "[Nama guru]", true),
+          ]
+        }),
+
+        // Separator
+        new Paragraph({ spacing: { before: 280, after: 100 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "1A5276" } },
+          children: []
+        }),
+
+        // Panduan format
+        new Paragraph({ spacing: { before: 180, after: 80 }, children: [
+          new TextRun({ text: "PANDUAN FORMAT SOAL", bold: true, size: 24, font: "Arial", color: "1A5276" })
+        ]}),
+        new Table({
+          width: { size: 9000, type: WidthType.DXA },
+          columnWidths: [1600, 2800, 4600],
+          rows: [
+            new TableRow({ children: [
+              new TableCell({ borders, width: { size: 1600, type: WidthType.DXA }, shading: { fill: "1A5276", type: ShadingType.CLEAR }, margins: { top: 70, bottom: 70, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: "Tipe", bold: true, size: 20, font: "Arial", color: "FFFFFF" })] })] }),
+              new TableCell({ borders, width: { size: 2800, type: WidthType.DXA }, shading: { fill: "1A5276", type: ShadingType.CLEAR }, margins: { top: 70, bottom: 70, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: "Format Jawaban", bold: true, size: 20, font: "Arial", color: "FFFFFF" })] })] }),
+              new TableCell({ borders, width: { size: 4600, type: WidthType.DXA }, shading: { fill: "1A5276", type: ShadingType.CLEAR }, margins: { top: 70, bottom: 70, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: "Keterangan", bold: true, size: 20, font: "Arial", color: "FFFFFF" })] })] }),
+            ]}),
+            ...guideRows.map((r, i) => new TableRow({ children: [
+              new TableCell({ borders, width: { size: 1600, type: WidthType.DXA }, shading: i%2===0?{ fill: "EBF5FB", type: ShadingType.CLEAR }:undefined, margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: r[0], bold: true, size: 19, font: "Arial" })] })] }),
+              new TableCell({ borders, width: { size: 2800, type: WidthType.DXA }, shading: i%2===0?{ fill: "EBF5FB", type: ShadingType.CLEAR }:undefined, margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: r[1], size: 19, font: "Arial", color: "CC0000" })] })] }),
+              new TableCell({ borders, width: { size: 4600, type: WidthType.DXA }, shading: i%2===0?{ fill: "EBF5FB", type: ShadingType.CLEAR }:undefined, margins: { top: 60, bottom: 60, left: 120, right: 120 }, children: [new Paragraph({ children: [new TextRun({ text: r[2], size: 19, font: "Arial" })] })] }),
+            ]}))
+          ]
+        }),
+
+        // Separator
+        new Paragraph({ spacing: { before: 280, after: 100 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "1A5276" } },
+          children: []
+        }),
+
+        // Soal
+        new Paragraph({ spacing: { before: 200, after: 80 }, children: [
+          new TextRun({ text: "DAFTAR SOAL", bold: true, size: 24, font: "Arial", color: "1A5276" })
+        ]}),
+        new Paragraph({ spacing: { before: 0, after: 160 }, children: [
+          new TextRun({ text: "⚠ Hapus soal contoh di bawah ini dan isi dengan soal Anda sendiri.", size: 19, font: "Arial", color: "CC0000", italics: true })
+        ]}),
+
+        // Contoh soal PG
+        new Paragraph({ spacing: { before: 100, after: 60 }, children: [
+          new TextRun({ text: "[ Contoh: Pilihan Ganda (PG) ]", size: 20, bold: true, font: "Arial", color: "1A5276" })
+        ]}),
+        ...makeSoalPG(1),
+
+        // Contoh soal Essay
+        new Paragraph({ spacing: { before: 100, after: 60 }, children: [
+          new TextRun({ text: "[ Contoh: Essay ]", size: 20, bold: true, font: "Arial", color: "1A5276" })
+        ]}),
+        ...makeSoalEssay(2),
+
+        // Contoh soal BS
+        new Paragraph({ spacing: { before: 100, after: 60 }, children: [
+          new TextRun({ text: "[ Contoh: Benar/Salah Multi (BS) ]", size: 20, bold: true, font: "Arial", color: "1A5276" })
+        ]}),
+        ...makeSoalBS(3),
+
+        // Footer
+        new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 300, after: 0 },
+          border: { top: { style: BorderStyle.SINGLE, size: 4, color: "1A5276" } },
+          children: [
+            new TextRun({ text: "AbsensiKu — Template Soal CBT | Upload di menu: CBT > Kelola Soal > Import DOCX", size: 18, font: "Arial", color: "AAAAAA", italics: true })
+          ]
+        }),
+      ]
+    }]
+  });
+
+  const buf = await Packer.toBuffer(doc);
+  const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'template_soal_cbt.docx';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+// ── Import / Parse Soal dari File DOCX ───────────────────────────
+const importSoalDariDocx = async (file, examId, existingCount, onImport) => {
+  if (!window.mammoth) {
+    alert('Library mammoth.js belum siap. Periksa koneksi internet.');
+    return;
+  }
+
+  let result;
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    result = await window.mammoth.extractRawText({ arrayBuffer });
+  } catch (e) {
+    alert('Gagal membaca file DOCX: ' + e.message);
+    return;
+  }
+
+  const rawText = result.value || '';
+  const questions = _parseSoalDariTeks(rawText, examId, existingCount);
+
+  if (questions.length === 0) {
+    alert(
+      'Tidak ada soal yang berhasil diparse.\n\n' +
+      'Pastikan format soal mengikuti template:\n' +
+      '• Setiap soal punya baris "Jawaban:" dan "Tipe:"\n' +
+      '• Pilihan A, B, C, D diawali huruf dan titik (A. ... B. ...)\n' +
+      '• Pisahkan antar soal dengan baris kosong atau ---\n\n' +
+      'Gunakan tombol "Template" untuk mengunduh contoh format yang benar.'
+    );
+    return;
+  }
+
+  const preview = questions.slice(0, 3).map((q, i) =>
+    `${i+1}. [${q.type.toUpperCase()}] ${q.question.substring(0, 55)}${q.question.length > 55 ? '...' : ''}`
+  ).join('\n');
+
+  const konfirm = confirm(
+    `✅ ${questions.length} soal berhasil diparse dari DOCX:\n\n${preview}` +
+    (questions.length > 3 ? `\n... dan ${questions.length - 3} soal lainnya` : '') +
+    '\n\nLanjutkan import ke database?'
+  );
+  if (!konfirm) return;
+
+  onImport(questions);
+};
+
+function _parseSoalDariTeks(text, examId, startOrder) {
+  const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const questions = [];
+  let current = null;
+
+  const flushQuestion = () => {
+    if (!current || !current.question || !current.question.trim()) return;
+    const tipe = (current.tipe || 'PG').toUpperCase().trim();
+    const jawaban = (current.jawaban || '').trim();
+    const bobot = parseInt(current.bobot) || 1;
+    const opts = current.options || [];
+
+    let qType = 'pg';
+    if (tipe === 'ESSAY') qType = 'essay';
+    else if (tipe === 'MCMA') qType = 'mcma';
+    else if (tipe === 'TF') qType = 'tf';
+    else if (tipe === 'BS') qType = 'bs';
+
+    const q = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6) + questions.length,
+      exam_id: examId,
+      type: qType,
+      question: current.question.trim(),
+      options: [],
+      correct_answer: '',
+      score: bobot,
+      order_num: (startOrder || 0) + questions.length + 1,
+      option_media: [],
+    };
+
+    if (qType === 'pg') {
+      q.options = opts.map(o => o.text);
+      const idx = ['A','B','C','D','E'].indexOf(jawaban.toUpperCase());
+      q.correct_answer = idx >= 0 ? ['A','B','C','D','E'][idx] : 'A';
+    } else if (qType === 'mcma') {
+      q.options = opts.map(o => o.text);
+      q.correct_answer = jawaban.toUpperCase().split(',').map(s => s.trim()).filter(s => /^[A-E]$/.test(s));
+      if (q.correct_answer.length === 0) q.correct_answer = ['A'];
+    } else if (qType === 'tf') {
+      q.options = [];
+      q.correct_answer = jawaban.toUpperCase().includes('BENAR') ? 'BENAR' : 'SALAH';
+    } else if (qType === 'bs') {
+      q.options = opts.map(o => o.text);
+      // Parse "A:BENAR,B:SALAH,C:BENAR" atau dari opts
+      const parts = jawaban.split(',').map(s => s.trim()).filter(Boolean);
+      if (parts.length > 0 && parts[0].includes(':')) {
+        q.correct_answer = parts.map(p => {
+          const m = p.match(/^[A-E\d]+\s*:\s*(BENAR|SALAH|B|S)/i);
+          if (m) return m[1].toUpperCase().startsWith('B') ? 'BENAR' : 'SALAH';
+          return 'BENAR';
+        });
+      } else {
+        q.correct_answer = opts.map(() => 'BENAR');
+      }
+      if (q.options.length === 0) {
+        q.options = ['Pernyataan 1', 'Pernyataan 2', 'Pernyataan 3'];
+        q.correct_answer = ['BENAR', 'BENAR', 'BENAR'];
+      }
+    } else {
+      q.options = [];
+      q.correct_answer = '';
+    }
+
+    questions.push(q);
+    current = null;
+  };
+
+  const OPTION_RE = /^([A-Ea-e])\s*[.)\u3002\uff0e]\s*(.+)/;
+  const FIELD_RE = /^(Jawaban|JAWABAN|Bobot|BOBOT|Tipe|TIPE)\s*[:：]\s*(.*)/i;
+  const SOAL_LABEL_RE = /^SOAL\s*[:：]\s*/i;
+  const SKIP_RE = /^(INFORMASI UJIAN|PETUNJUK|DAFTAR SOAL|TEMPLATE|AbsensiKu|Judul Ujian|Mata Pelajaran|Kelas|Durasi|Dibuat|Tipe Soal|Format|Keterangan|PANDUAN|Tipe yang|Tipe\s+Format|PG \(|MCMA \(|TF \(|BS \(|ESSAY)/i;
+
+  for (let i = 0; i < lines.length; i++) {
+    const raw = lines[i];
+    const line = raw.trim();
+
+    if (!line || line === '---' || /^={3,}/.test(line) || /^\-{3,}$/.test(line)) {
+      flushQuestion();
+      continue;
+    }
+
+    if (SKIP_RE.test(line)) continue;
+    // Skip table guide rows
+    if (/^(PG|MCMA|TF|BS|ESSAY)\s+(A\s*\/|Pilih|1\s+jawaban|Pisah|Satu|Multi|Dinilai)/i.test(line)) continue;
+
+    // "SOAL: ..." format
+    if (SOAL_LABEL_RE.test(line)) {
+      flushQuestion();
+      current = { question: line.replace(SOAL_LABEL_RE, ''), options: [], tipe: 'PG', jawaban: '', bobot: '1' };
+      continue;
+    }
+
+    // Field baris (Jawaban: / Bobot: / Tipe:)
+    const fieldMatch = line.match(FIELD_RE);
+    if (fieldMatch && current) {
+      const key = fieldMatch[1].toLowerCase();
+      const val = fieldMatch[2].trim();
+      if (key === 'jawaban') current.jawaban = val;
+      else if (key === 'bobot') current.bobot = val;
+      else if (key === 'tipe') current.tipe = val;
+      continue;
+    }
+
+    // Pilihan A. B. C. D. E.
+    const optMatch = line.match(OPTION_RE);
+    if (optMatch && current) {
+      current.options = current.options || [];
+      current.options.push({ letter: optMatch[1].toUpperCase(), text: optMatch[2].trim() });
+      continue;
+    }
+
+    // Soal dalam format "1. Pertanyaan..."
+    const numMatch = line.match(/^(\d{1,3})[.\)]\s+(.{5,})/);
+    if (numMatch && !current) {
+      const questionText = numMatch[2];
+      // Pastikan bukan header/info
+      if (!SKIP_RE.test(questionText)) {
+        flushQuestion();
+        current = { question: questionText, options: [], tipe: 'PG', jawaban: '', bobot: '1' };
+        continue;
+      }
+    }
+
+    // Lanjutkan teks pertanyaan (multi-baris)
+    if (current && !current.options.length) {
+      // Hanya jika bukan field khusus
+      if (!FIELD_RE.test(line) && !OPTION_RE.test(line)) {
+        current.question += ' ' + line;
+      }
+    }
+  }
+
+  flushQuestion(); // flush soal terakhir
+
+  // Filter soal yang valid: minimal punya pertanyaan
+  return questions.filter(q => q.question && q.question.length > 3);
+}
+
+
+// ================================================================
+// VERSI BARU: CbtQuestionsModal dengan tombol Download Template + Upload DOCX
+// Ganti seluruh fungsi CbtQuestionsModal yang lama dengan ini
+// ================================================================
+
+function CbtQuestionsModal({exam, onClose}) {
+  const [questions, setQuestions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editQ, setEditQ] = useState(null);
+  const [importText, setImportText] = useState('');
+  const [showImport, setShowImport] = useState(false);
+  const [importingDocx, setImportingDocx] = useState(false);
+  const [importMsg, setImportMsg] = useState('');
+
+  const reload = async () => {
+    setLoading(true);
+    const q = await DB.getCbtQuestions(exam.id);
+    setQuestions(q);
+    setLoading(false);
+  };
+  useEffect(() => { reload(); }, []);
+
+  const newQ = () => setEditQ({
+    id: genId(), exam_id: exam.id, type: 'pg', question: '',
+    options: ['', '', '', '', ''], correct_answer: 'A',
+    score: 1, order_num: questions.length + 1
+  });
+
+  const handleImportTeks = async () => {
+    const lines = importText.trim().split('\n').filter(l => l.trim());
+    if (!lines.length) { alert('Format import kosong'); return; }
+    const qs = lines.map((line, i) => {
+      const parts = line.split('|');
+      if (parts.length < 2) return null;
+      const q2 = parts[0].replace(/^\d+\.\s*/, '').trim();
+      if (!q2) return null;
+      const opts = parts.slice(1, 5).map(o => o.replace(/^[A-E]\./, '').trim()).filter(Boolean);
+      const ans = (parts[5] || parts[parts.length - 1] || 'A').trim().toUpperCase();
+      return {
+        id: genId(), exam_id: exam.id, type: 'pg',
+        question: q2, options: opts, correct_answer: ans,
+        score: 1, order_num: questions.length + i + 1
+      };
+    }).filter(Boolean);
+
+    if (!qs.length) { alert('Tidak ada soal valid. Format: pertanyaan|A.opsi|B.opsi|C.opsi|D.opsi|JAWABAN'); return; }
+    try {
+      await DB.saveCbtQuestionsBulk(qs);
+      reload();
+      setShowImport(false);
+      setImportText('');
+      alert(qs.length + ' soal berhasil diimport!');
+    } catch (e) { alert('Gagal import: ' + e.message); }
+  };
+
+  const handleUploadDocx = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = '';
+
+    if (!file.name.match(/\.docx$/i)) {
+      alert('File harus berformat .docx');
+      return;
+    }
+
+    setImportingDocx(true);
+    setImportMsg('Membaca file DOCX...');
+
+    try {
+      await importSoalDariDocx(file, exam.id, questions.length, async (soalBaru) => {
+        setImportMsg('Menyimpan ' + soalBaru.length + ' soal ke database...');
+        await DB.saveCbtQuestionsBulk(soalBaru);
+        await DB.addLog('Guru', 'Import Soal DOCX', exam.title + ' — ' + soalBaru.length + ' soal');
+        await reload();
+        setImportMsg('');
+        alert('✅ ' + soalBaru.length + ' soal berhasil diimport dari DOCX!');
+      });
+    } catch (err) {
+      alert('Gagal import DOCX: ' + err.message);
+    } finally {
+      setImportingDocx(false);
+      setImportMsg('');
+    }
+  };
+
+  const inSt = {
+    width: '100%', padding: '9px 12px', borderRadius: '10px',
+    background: 'var(--input-bg)', border: '1px solid var(--border)',
+    color: 'var(--text-primary)', fontFamily: MONO, fontSize: '11px', boxSizing: 'border-box'
+  };
+
+  return h('div', {
+    onClick: onClose,
+    style: { position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,.75)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '16px', overflowY: 'auto' }
+  },
+    h('div', {
+      onClick: e => e.stopPropagation(),
+      style: { width: 'min(640px,100%)', background: 'var(--bg-panel-s)', borderRadius: '20px', border: '1px solid var(--accent-dim)', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '8px', marginBottom: '32px' }
+    },
+      // Header
+      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' } },
+        h('div', null,
+          h('h3', { style: { fontFamily: ORB, color: 'var(--accent)', fontSize: '13px', letterSpacing: '.07em' } }, '📝 Soal: ' + exam.title),
+          h('p', { style: { fontSize: '9px', fontFamily: MONO, color: 'var(--text-muted)', marginTop: '2px' } }, questions.length + ' soal terdaftar')
+        ),
+        h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap' } },
+          // Tombol Download Template DOCX
+          h('button', {
+            onClick: () => downloadTemplateSoalDocx(),
+            title: 'Download template soal dalam format DOCX/TXT',
+            style: { padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(0,255,136,.3)', background: 'rgba(0,255,136,.08)', color: '#00ff88', cursor: 'pointer', fontFamily: MONO, fontSize: '10px' }
+          }, '📥 Template'),
+
+          // Tombol Upload DOCX
+          importingDocx
+            ? h('span', { style: { padding: '7px 12px', fontSize: '10px', fontFamily: MONO, color: 'var(--accent)' } }, importMsg || 'Memproses...')
+            : h('label', {
+                title: 'Upload file soal format DOCX sesuai template',
+                style: { padding: '7px 12px', borderRadius: '8px', border: '1px solid rgba(168,85,247,.3)', background: 'rgba(168,85,247,.08)', color: '#a855f7', cursor: 'pointer', fontFamily: MONO, fontSize: '10px', display: 'inline-flex', alignItems: 'center', gap: '5px' }
+              },
+                '📤 Upload DOCX',
+                h('input', { type: 'file', accept: '.docx', onChange: handleUploadDocx, style: { display: 'none' } })
+              ),
+
+          // Import teks manual
+          h('button', {
+            onClick: () => setShowImport(!showImport),
+            style: { padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-secondary)', cursor: 'pointer', fontFamily: MONO, fontSize: '10px' }
+          }, showImport ? '✕ Tutup' : '📝 Import Teks'),
+
+          // Tambah soal manual
+          h('button', {
+            onClick: newQ,
+            style: { padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--accent-dim)', background: 'var(--accent-bg)', color: 'var(--accent)', cursor: 'pointer', fontFamily: MONO, fontSize: '10px' }
+          }, '+ Soal'),
+
+          // Tutup
+          h('button', {
+            onClick: onClose,
+            style: { padding: '7px 12px', borderRadius: '8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontFamily: MONO, fontSize: '10px' }
+          }, '✕ Tutup')
+        )
+      ),
+
+      // Info DOCX
+      h('div', { style: { padding: '10px 14px', borderRadius: '10px', background: 'rgba(168,85,247,.06)', border: '1px solid rgba(168,85,247,.15)', display: 'flex', gap: '10px', alignItems: 'flex-start' } },
+        h('span', { style: { fontSize: '16px', flexShrink: 0 } }, 'ℹ️'),
+        h('p', { style: { fontSize: '10px', fontFamily: MONO, color: 'var(--text-muted)', lineHeight: '1.6' } },
+          'Download template DOCX → isi soal di Word/Google Docs → Upload DOCX. ' +
+          'Mendukung tipe: PG, MCMA, TF, BS, Essay.'
+        )
+      ),
+
+      // Import teks manual (collapsible)
+      showImport && h('div', { style: { padding: '14px', borderRadius: '12px', background: 'rgba(0,240,255,.04)', border: '1px solid rgba(0,240,255,.15)' } },
+        h('p', { style: { fontFamily: MONO, fontSize: '9px', color: 'var(--text-muted)', marginBottom: '6px', lineHeight: '1.6' } },
+          'Format per baris: 1. Pertanyaan|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|JAWABAN'
+        ),
+        h('textarea', {
+          value: importText, onChange: e => setImportText(e.target.value), rows: 5,
+          placeholder: '1. Ibukota Indonesia adalah?|A.Bandung|B.Jakarta|C.Surabaya|D.Medan|B',
+          style: { ...inSt, resize: 'vertical' }
+        }),
+        h('button', {
+          onClick: handleImportTeks, disabled: !importText.trim(),
+          style: { marginTop: '8px', padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--accent-dim)', background: 'var(--accent-bg)', color: 'var(--accent)', cursor: 'pointer', fontFamily: MONO, fontSize: '10px', opacity: !importText.trim() ? 0.4 : 1 }
+        }, 'Import Soal Teks')
+      ),
+
+      // Daftar soal
+      loading ? h(LoadingScreen, { msg: 'Memuat soal...' }) :
+      questions.length === 0
+        ? h('div', { style: { textAlign: 'center', padding: '40px' } },
+            h('p', { style: { fontSize: '32px', marginBottom: '12px' } }, '📝'),
+            h('p', { style: { color: 'var(--text-muted)', fontFamily: MONO, fontSize: '11px' } }, 'Belum ada soal. Klik "+ Soal" atau upload DOCX.')
+          )
+        : h('div', { style: { display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' } },
+            questions.map((q, qi) => h('div', {
+              key: q.id,
+              style: { padding: '12px', borderRadius: '12px', background: 'var(--bg-card)', border: '1px solid var(--border)' }
+            },
+              h('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '8px' } },
+                h('p', { style: { fontFamily: MONO, fontSize: '11px', color: 'var(--text-secondary)', flex: 1, lineHeight: '1.5' } },
+                  h('span', { style: { color: 'var(--accent)', fontWeight: 'bold', marginRight: '6px' } }, (qi + 1) + '.'),
+                  h('span', {
+                    style: { background: q.type === 'essay' ? 'rgba(168,85,247,.15)' : q.type === 'mcma' ? 'rgba(251,146,60,.15)' : q.type === 'tf' ? 'rgba(250,204,21,.15)' : q.type === 'bs' ? 'rgba(34,197,94,.15)' : 'rgba(0,240,255,.1)', color: q.type === 'essay' ? '#a855f7' : q.type === 'mcma' ? '#fb923c' : q.type === 'tf' ? '#facc15' : q.type === 'bs' ? '#22c55e' : '#00f0ff', fontSize: '8px', padding: '1px 6px', borderRadius: '4px', marginRight: '6px', fontFamily: MONO }
+                  }, { essay: 'ESSAY', mcma: 'MCMA', tf: 'B/S', pg: 'PG', bs: 'B/S-M' }[q.type] || q.type),
+                  q.question
+                ),
+                h('div', { style: { display: 'flex', gap: '4px' } },
+                  h('button', {
+                    onClick: () => setEditQ({ ...q }),
+                    style: { padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '10px' }
+                  }, '✏️'),
+                  h('button', {
+                    onClick: async () => { await DB.deleteCbtQuestion(q.id); reload(); },
+                    style: { padding: '4px 8px', borderRadius: '6px', border: '1px solid rgba(239,68,68,.2)', background: 'rgba(239,68,68,.05)', color: '#f87171', cursor: 'pointer', fontSize: '10px' }
+                  }, '🗑')
+                )
+              ),
+              (q.type === 'pg' || q.type === 'mcma') && h('div', {
+                style: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', marginTop: '6px' }
+              },
+                ['A', 'B', 'C', 'D', 'E'].map((ltr, i) => h('span', {
+                  key: ltr,
+                  style: {
+                    fontSize: '9px', fontFamily: MONO,
+                    color: (Array.isArray(q.correct_answer) ? q.correct_answer.includes(ltr) : q.correct_answer === ltr) ? '#00ff88' : 'var(--text-dim)',
+                    background: (Array.isArray(q.correct_answer) ? q.correct_answer.includes(ltr) : q.correct_answer === ltr) ? 'rgba(0,255,136,.1)' : 'transparent',
+                    padding: '2px 6px', borderRadius: '4px',
+                    border: '1px solid ' + ((Array.isArray(q.correct_answer) ? q.correct_answer.includes(ltr) : q.correct_answer === ltr) ? 'rgba(0,255,136,.2)' : 'transparent')
+                  }
+                }, ltr + '. ' + (q.options && q.options[i] ? q.options[i] : '—')))
+              )
+            ))
+          ),
+
+      editQ && h(CbtQuestionEditor, {
+        q: editQ,
+        onClose: () => setEditQ(null),
+        onSave: async q => { await DB.saveCbtQuestion(q); setEditQ(null); reload(); },
+        allowEssay: exam.allow_essay
+      })
+    )
+  );
+}
 const gl = {background:'var(--bg-panel)',backdropFilter:'none',border:'1px solid var(--border)'};
 const glS = {background:'var(--bg-panel-s)',backdropFilter:'none',border:'1px solid var(--border-s)'};
 const ORB = 'Orbitron,monospace';
