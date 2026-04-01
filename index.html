@@ -4135,22 +4135,25 @@ function CbtQuestionsModal({exam,onClose}) {
         ),
         h('div',{style:{display:'flex',gap:'8px'}},
           h('button',{
-  onClick:()=>DB.getCbtQuestions(exam.id).then(qs=>exportQuestionsDocx(qs, exam.title)),
+  onClick:()=>{DB.getCbtQuestions(exam.id).then(function(qs){exportQuestionsDocx(qs,exam.title);});},
   style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid rgba(0,255,136,.3)',background:'rgba(0,255,136,.08)',color:'#00ff88',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}
 },'📥 Export TXT'),
-h('label',{style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},
+h('label',{
+  style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',fontFamily:MONO,fontSize:'10px',display:'inline-flex',alignItems:'center'}
+},
   '📤 Import File',
-  h('input',{type:'file',accept:'.txt,.doc,.docx',style:{display:'none'},onChange:e=>{
-    if(!e.target.files[0]) return;
-    importQuestionsFromFile(e.target.files[0], exam.id, questions.length, async(qs)=>{
-      await DB.saveCbtQuestionsBulk(qs);
-      reload();
-      alert(qs.length+' soal berhasil diimport!');
+  h('input',{type:'file',accept:'.txt',style:{display:'none'},onChange:function(e){
+    if(!e.target.files||!e.target.files[0]) return;
+    var f=e.target.files[0];
+    importQuestionsFromFile(f,exam.id,questions.length,function(qs){
+      DB.saveCbtQuestionsBulk(qs).then(function(){
+        reload();
+        alert(qs.length+' soal berhasil diimport!');
+      });
     });
     e.target.value='';
   }})
 ),
-      ),
 
       showImport&&h('div',{style:{padding:'14px',borderRadius:'12px',background:'rgba(0,240,255,.04)',border:'1px solid rgba(0,240,255,.15)'}},
         h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)',marginBottom:'6px',lineHeight:'1.6'}},'Format per baris: 1. Pertanyaan|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|JAWABAN'),
