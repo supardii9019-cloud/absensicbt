@@ -980,121 +980,201 @@ const downloadSoalTemplate = (examTitle) => {
 // ============================================================
 // DOWNLOAD SOAL CBT KE WORD DOCX — menggunakan docxjs via CDN
 // ============================================================
+// ============================================================
+// DOWNLOAD SOAL CBT KE .DOCX — Pure browser, tanpa library
+// Membuat file .docx dari XML + ZIP menggunakan JSZip
+// ============================================================
 const downloadSoalDocx = async (questions, examTitle) => {
-  // Lazy-load docx library
-  if (!window.docx) {
+  // Load JSZip jika belum ada
+  if (!window.JSZip) {
     await new Promise((res, rej) => {
       const s = document.createElement('script');
-      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.umd.min.js';
-      s.onload = res; s.onerror = rej;
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload = res;
+      s.onerror = () => rej(new Error('Gagal load JSZip'));
       document.head.appendChild(s);
     });
   }
-  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
-          BorderStyle, WidthType, ShadingType, AlignmentType, HeadingLevel } = window.docx;
 
-  const border = { style: BorderStyle.SINGLE, size: 1, color: 'AAAAAA' };
-  const borders = { top: border, bottom: border, left: border, right: border };
+  const esc = t => String(t||'')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&apos;');
 
-  const makePara = (text, opts={}) => new Paragraph({
-    children: [new TextRun({ text, font: 'Arial', size: opts.size||22,
-      bold: opts.bold||false, color: opts.color||'000000' })],
-    spacing: { before: opts.before||60, after: opts.after||60 },
-    alignment: opts.align||AlignmentType.LEFT,
-  });
+  const LTRS = ['A','B','C','D','E'];
 
-  const children = [];
+  // Warna header tabel (hex tanpa #)
+  const HDR_COLOR = '1F4E79';
+  const ROW_ODD   = 'DDEEFF';
+  const ROW_EVEN  = 'FFFFFF';
 
-  // Judul
-  children.push(new Paragraph({
-    heading: HeadingLevel.HEADING_1,
-    children: [new TextRun({ text: 'SOAL CBT: ' + (examTitle||'Ujian'), font:'Arial', size:32, bold:true, color:'1F4E79' })],
-    spacing: { before: 0, after: 240 },
-  }));
+  // ── Helper: buat paragraf teks ──────────────────────────────
+  const para = (text, opts={}) => {
+    const sz  = opts.size  || 22;
+    const bold = opts.bold  ? '<w:b/>' : '';
+    const clr  = opts.color ? `<w:color w:val="${opts.color}"/>` : '';
+    const spBef = opts.before != null ? opts.before : 60;
+    const spAft = opts.after  != null ? opts.after  : 60;
+    const align = opts.align  ? `<w:jc w:val="${opts.align}"/>` : '';
+    return `<w:p>
+      <w:pPr><w:spacing w:before="${spBef}" w:after="${spAft}"/>${align}</w:pPr>
+      <w:r><w:rPr>${bold}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/>${clr}<w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr>
+      <w:t xml:space="preserve">${esc(text)}</w:t></w:r>
+    </w:p>`;
+  };
 
-  children.push(makePara(
-    'Format Import: Nomor. Pertanyaan|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|JAWABAN',
-    { color:'888888', size:18, before:0, after:240 }
-  ));
+  // ── Helper: sel tabel ───────────────────────────────────────
+  const cell = (content, widthDxa, fillHex, opts={}) => {
+    const lines = String(content||'').split('\n');
+    const paragraphs = lines.map(line => {
+      const bold  = opts.bold  ? '<w:b/>' : '';
+      const color = opts.color || (fillHex !== ROW_ODD && fillHex !== ROW_EVEN ? 'FFFFFF' : '000000');
+      return `<w:p><w:pPr><w:spacing w:before="40" w:after="40"/></w:pPr>
+        <w:r><w:rPr>${bold}<w:sz w:val="18"/><w:szCs w:val="18"/>
+          <w:color w:val="${color}"/>
+          <w:rFonts w:ascii="Arial" w:hAnsi="Arial"/>
+        </w:rPr><w:t xml:space="preserve">${esc(line)}</w:t></w:r></w:p>`;
+    }).join('');
+    return `<w:tc>
+      <w:tcPr>
+        <w:tcW w:w="${widthDxa}" w:type="dxa"/>
+        <w:shd w:val="clear" w:color="auto" w:fill="${fillHex}"/>
+        <w:tcMar>
+          <w:top w:w="80" w:type="dxa"/>
+          <w:left w:w="120" w:type="dxa"/>
+          <w:bottom w:w="80" w:type="dxa"/>
+          <w:right w:w="120" w:type="dxa"/>
+        </w:tcMar>
+      </w:tcPr>
+      ${paragraphs}
+    </w:tc>`;
+  };
 
-  // Tabel soal
-  const headerRow = new TableRow({
-    children: [
-      new TableCell({ width:{size:600,type:WidthType.DXA}, borders, shading:{fill:'1F4E79',type:ShadingType.CLEAR},
-        margins:{top:80,bottom:80,left:120,right:120},
-        children:[new Paragraph({children:[new TextRun({text:'No',bold:true,color:'FFFFFF',font:'Arial',size:20})]})] }),
-      new TableCell({ width:{size:4000,type:WidthType.DXA}, borders, shading:{fill:'1F4E79',type:ShadingType.CLEAR},
-        margins:{top:80,bottom:80,left:120,right:120},
-        children:[new Paragraph({children:[new TextRun({text:'Pertanyaan',bold:true,color:'FFFFFF',font:'Arial',size:20})]})] }),
-      new TableCell({ width:{size:3000,type:WidthType.DXA}, borders, shading:{fill:'1F4E79',type:ShadingType.CLEAR},
-        margins:{top:80,bottom:80,left:120,right:120},
-        children:[new Paragraph({children:[new TextRun({text:'Pilihan A/B/C/D/E',bold:true,color:'FFFFFF',font:'Arial',size:20})]})] }),
-      new TableCell({ width:{size:800,type:WidthType.DXA}, borders, shading:{fill:'1F4E79',type:ShadingType.CLEAR},
-        margins:{top:80,bottom:80,left:120,right:120},
-        children:[new Paragraph({children:[new TextRun({text:'Jawaban',bold:true,color:'FFFFFF',font:'Arial',size:20})]})] }),
-      new TableCell({ width:{size:600,type:WidthType.DXA}, borders, shading:{fill:'1F4E79',type:ShadingType.CLEAR},
-        margins:{top:80,bottom:80,left:120,right:120},
-        children:[new Paragraph({children:[new TextRun({text:'Skor',bold:true,color:'FFFFFF',font:'Arial',size:20})]})] }),
-    ]
-  });
+  // ── Bangun baris header ─────────────────────────────────────
+  const headerRow = `<w:tr>
+    ${cell('No',       500,  HDR_COLOR, {bold:true})}
+    ${cell('Pertanyaan', 3800, HDR_COLOR, {bold:true})}
+    ${cell('Pilihan Jawaban', 3200, HDR_COLOR, {bold:true})}
+    ${cell('Jawaban', 900,  HDR_COLOR, {bold:true})}
+    ${cell('Skor',    600,  HDR_COLOR, {bold:true})}
+  </w:tr>`;
 
+  // ── Bangun baris data ───────────────────────────────────────
   const dataRows = (questions||[]).map((q, idx) => {
-    const LTRS = ['A','B','C','D','E'];
-    const opsiStr = (q.options||[]).map((o,i) => LTRS[i]+'. '+o).join('\n');
-    const jawabanStr = Array.isArray(q.correct_answer) ? q.correct_answer.join(',') : (q.correct_answer||'—');
-    const rowFill = idx%2===0 ? 'FFFFFF' : 'EBF3FB';
-
-    const makeCell = (text, w) => new TableCell({
-      width: {size:w, type:WidthType.DXA}, borders,
-      shading: {fill:rowFill, type:ShadingType.CLEAR},
-      margins: {top:80,bottom:80,left:120,right:120},
-      children: text.split('\n').map(line =>
-        new Paragraph({children:[new TextRun({text:line,font:'Arial',size:18})]})
-      )
-    });
-
-    return new TableRow({ children: [
-      makeCell(String(idx+1), 600),
-      makeCell(q.question||'', 4000),
-      makeCell(opsiStr||({essay:'(Essay)',tf:'BENAR / SALAH',bs:'(Pernyataan B/S)'}[q.type]||'—'), 3000),
-      makeCell(jawabanStr, 800),
-      makeCell(String(q.score||1), 600),
-    ]});
+    const fill = idx % 2 === 0 ? ROW_EVEN : ROW_ODD;
+    const opsi = (q.options||[]).map((o,i)=>LTRS[i]+'. '+o).join('\n');
+    const opsiStr = opsi || ({
+      essay: '(Essay — jawaban uraian)',
+      tf:    'BENAR / SALAH',
+      bs:    '(Benar/Salah per pernyataan)',
+    }[q.type] || '—');
+    const jawaban = Array.isArray(q.correct_answer)
+      ? q.correct_answer.join(', ')
+      : (q.correct_answer || '—');
+    return `<w:tr>
+      ${cell(idx+1,              500,  fill, {color:'000000'})}
+      ${cell(q.question||'',    3800, fill, {color:'000000'})}
+      ${cell(opsiStr,           3200, fill, {color:'000000'})}
+      ${cell(jawaban,            900, fill, {color:'000000'})}
+      ${cell(q.score||1,         600, fill, {color:'000000'})}
+    </w:tr>`;
   });
 
-  children.push(new Table({
-    width: {size:9000, type:WidthType.DXA},
-    columnWidths: [600, 4000, 3000, 800, 600],
-    rows: [headerRow, ...dataRows],
-  }));
+  // ── Bagian instruksi ────────────────────────────────────────
+  const instruksi = [
+    'Cara export kembali ke Import CBT:',
+    '1. Salin teks soal ke format: Pertanyaan|A.OpsiA|B.OpsiB|C.OpsiC|D.OpsiD|JAWABAN',
+    '2. Di halaman CBT Admin, buka Soal lalu klik "Import TXT"',
+    '3. Tempel teks soal (satu soal per baris) lalu klik Import',
+    '',
+    'Contoh: Ibukota Indonesia?|A.Bandung|B.Jakarta|C.Surabaya|D.Medan|B',
+  ];
 
-  // Instruksi import
-  children.push(makePara('', {before:240,after:0}));
-  children.push(new Paragraph({
-    heading: HeadingLevel.HEADING_2,
-    children: [new TextRun({text:'Cara Import Ulang ke CBT',font:'Arial',size:26,bold:true,color:'1F4E79'})],
-    spacing:{before:240,after:120},
-  }));
-  [
-    '1. Salin baris soal ke format teks: Pertanyaan|A.OpsiA|B.OpsiB|C.OpsiC|D.OpsiD|JAWABAN',
-    '2. Buka halaman CBT Admin → pilih Ujian → Soal → Import',
-    '3. Tempel teks soal di kotak import, satu soal per baris',
-    '4. Klik tombol "Import Soal"',
-  ].forEach(t => children.push(makePara(t, {size:20})));
+  // ── Rakit document.xml ──────────────────────────────────────
+  const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<w:body>
 
-  const doc = new Document({
-    sections:[{
-      properties:{page:{size:{width:12240,height:15840},margin:{top:1440,right:1440,bottom:1440,left:1440}}},
-      children
-    }]
-  });
+  ${para('SOAL CBT: ' + (examTitle||'Ujian'), {size:32, bold:true, color:'1F4E79', before:0, after:200})}
+  ${para('Jumlah soal: '+(questions||[]).length+' soal', {size:20, color:'555555', before:0, after:300})}
 
-  const buffer = await Packer.toBuffer(doc);
-  const blob = new Blob([buffer], {type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'soal_' + (examTitle||'cbt').replace(/\s/g,'_') + '.docx';
-  a.click();
+  <w:tbl>
+    <w:tblPr>
+      <w:tblW w:w="9000" w:type="dxa"/>
+      <w:tblBorders>
+        <w:top    w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
+        <w:left   w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
+        <w:bottom w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
+        <w:right  w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
+        <w:insideH w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
+        <w:insideV w:val="single" w:sz="4" w:space="0" w:color="AAAAAA"/>
+      </w:tblBorders>
+      <w:tblLook w:val="04A0"/>
+    </w:tblPr>
+    <w:tblGrid>
+      <w:gridCol w:w="500"/>
+      <w:gridCol w:w="3800"/>
+      <w:gridCol w:w="3200"/>
+      <w:gridCol w:w="900"/>
+      <w:gridCol w:w="600"/>
+    </w:tblGrid>
+    ${headerRow}
+    ${dataRows.join('\n')}
+  </w:tbl>
+
+  ${para('', {before:240, after:0})}
+  ${para('Instruksi Import', {size:26, bold:true, color:'1F4E79', before:200, after:120})}
+  ${instruksi.map(t => para(t, {size:19, color:'333333'})).join('\n')}
+
+  <w:sectPr>
+    <w:pgSz w:w="12240" w:h="15840"/>
+    <w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/>
+  </w:sectPr>
+
+</w:body>
+</w:document>`;
+
+  // ── Rakit file-file .docx (ZIP) ─────────────────────────────
+  const zip = new window.JSZip();
+
+  zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/word/document.xml"
+    ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`);
+
+  zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1"
+    Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument"
+    Target="word/document.xml"/>
+</Relationships>`);
+
+  zip.file('word/document.xml', docXml);
+
+  zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>`);
+
+  // Generate dan download
+  try {
+    const blob = await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'soal_' + (examTitle||'cbt').replace(/\s+/g,'_') + '.docx';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
+  } catch(err) {
+    alert('Gagal membuat file: ' + err.message);
+  }
 };
 
 // ============================================================
