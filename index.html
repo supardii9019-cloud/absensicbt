@@ -4084,7 +4084,7 @@ function genId(){ return Date.now().toString(36)+Math.random().toString(36).slic
 function shuffle(arr){ const a=[...arr]; for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 
 // ── ADMIN CBT PANEL ────────────────────────────────────────────────
-function AdminCBT({students,settings,isSuperAdmin,onBack}) {
+function AdminCBT({students,settings,isSuperAdmin,onBack,isDemo}) {
   const [tab,setTab]=useState('exams');
   const [exams,setExams]=useState([]);
   const [loading,setLoading]=useState(true);
@@ -4094,6 +4094,7 @@ function AdminCBT({students,settings,isSuperAdmin,onBack}) {
   const [viewResult,setViewResult]=useState(null);
 
   const reload=useCallback(async()=>{
+    if(isDemo){setExams([]);setLoading(false);return;}
     setLoading(true);
     setError(null);
     try {
@@ -6053,7 +6054,7 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
           page==='location'&&h(AdminLocation,{onBack:()=>setPage('dashboard'),settings,onSave:saveSettings}),
           page==='wa'&&h(AdminWA,{onBack:()=>setPage('dashboard'),students,records,settings,onReload:reload}),
           page==='teachers'&&h(AdminTeachers,{onBack:()=>setPage('dashboard'),onReload:reload}),
-          page==='cbt'&&h(AdminCBT,{onBack:()=>setPage('dashboard'),students,settings,isSuperAdmin}),
+          page==='cbt'&&h(AdminCBT,{onBack:()=>setPage('dashboard'),students,settings,isSuperAdmin,isDemo}),
           page==='rekap'&&h(AdminRekapBulanan,{onBack:()=>setPage('dashboard'),records,students,settings,holidays}),
           page==='holidays'&&h(AdminHolidays,{onBack:()=>setPage('dashboard'),holidays,onReload:reload}),
           page==='schedule'&&h(AdminSchedule,{onBack:()=>setPage('dashboard'),settings,onSave:saveSettings}),
@@ -6095,7 +6096,7 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
       page==='qrscan'&&h(AdminQRScanner,{onBack:()=>setPage('dashboard'),students,records,settings,onReload:reload}),
       page==='wa'&&h(AdminWA,{onBack:()=>setPage('dashboard'),students,records,settings,onReload:reload}),
       page==='teachers'&&h(AdminTeachers,{onBack:()=>setPage('dashboard'),onReload:reload}),
-      page==='cbt'&&h(AdminCBT,{onBack:()=>setPage('dashboard'),students,settings,isSuperAdmin}),
+      page==='cbt'&&h(AdminCBT,{onBack:()=>setPage('dashboard'),students,settings,isSuperAdmin,isDemo}),
       page==='rekap'&&h(AdminRekapBulanan,{onBack:()=>setPage('dashboard'),records,students,settings,holidays}),
       page==='holidays'&&h(AdminHolidays,{onBack:()=>setPage('dashboard'),holidays,onReload:reload}),
       page==='schedule'&&h(AdminSchedule,{onBack:()=>setPage('dashboard'),settings,onSave:saveSettings}),
