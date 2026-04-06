@@ -874,7 +874,8 @@ const DB = {
       max_concurrent:exam.max_concurrent||100,
       wave_interval:exam.wave_interval||0,
       token:exam.token||null,
-      show_score:exam.show_score!==false
+      show_score:exam.show_score!==false,
+camera_enabled:exam.camera_enabled!==false
     });
   },
   async deleteCbtExam(id) {
@@ -4244,9 +4245,10 @@ const kelasOptions = [...new Set([...kelasFromStudents,'Semua Kelas'])];
       h('div',{style:{display:'flex',flexDirection:'column',gap:'10px'}},
         ...[
           {key:'shuffle_questions',label:'🔀 Acak urutan soal'},
-          {key:'shuffle_answers',  label:'🔀 Acak pilihan jawaban'},
-          {key:'allow_essay',      label:'📝 Izinkan soal essay'},
-          {key:'show_score',       label:'📊 Tampilkan nilai ke siswa setelah ujian'},
+{key:'shuffle_answers',  label:'🔀 Acak pilihan jawaban'},
+{key:'allow_essay',      label:'📝 Izinkan soal essay'},
+{key:'show_score',       label:'📊 Tampilkan nilai ke siswa setelah ujian'},
+{key:'camera_enabled',   label:'📷 Aktifkan kamera pengawasan saat ujian'},
         ].map(({key,label})=>
           h('label',{style:{display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',fontFamily:MONO,fontSize:'11px',color:'var(--text-secondary)'}},
             h('input',{type:'checkbox',checked:f[key]!==undefined?!!f[key]:key==='show_score'?true:false,onChange:e=>upd(key)(e.target.checked),style:{width:'16px',height:'16px',accentColor:'var(--accent)'}}),
@@ -5081,6 +5083,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   // ── Kamera ────────────────────────────────────────────────────────
   useEffect(()=>{
     if(loading||!tokenPassed||submitted) return;
+    if(exam.camera_enabled===false) return;
     let localStream=null;
     navigator.mediaDevices.getUserMedia({video:{facingMode:'user'},audio:false})
       .then(stream=>{
@@ -5464,11 +5467,16 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       ),
       h('div',{style:{display:'flex',alignItems:'center',gap:'6px'}},
         // Kamera preview kecil
-        h('div',{style:{position:'relative',width:'36px',height:'27px',borderRadius:'6px',overflow:'hidden',border:'1px solid '+(camError?'rgba(239,68,68,.4)':'rgba(0,240,255,.3)'),background:'#000',flexShrink:0}},
-          h('video',{ref:videoRef,autoPlay:true,muted:true,playsInline:true,style:{width:'100%',height:'100%',objectFit:'cover'}}),
-          camError&&h('p',{style:{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'#f87171'}},'❌'),
-          h('canvas',{ref:canvasRef,style:{display:'none'}})
-        ),
+        exam.camera_enabled!==false
+  ?h('div',{style:{position:'relative',width:'36px',height:'27px',borderRadius:'6px',overflow:'hidden',border:'1px solid '+(camError?'rgba(239,68,68,.4)':'rgba(0,240,255,.3)'),background:'#000',flexShrink:0}},
+      h('video',{ref:videoRef,autoPlay:true,muted:true,playsInline:true,style:{width:'100%',height:'100%',objectFit:'cover'}}),
+      camError&&h('p',{style:{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',fontSize:'10px',color:'#f87171'}},'❌'),
+      h('canvas',{ref:canvasRef,style:{display:'none'}})
+    )
+  :h('div',{style:{width:'36px',height:'27px',borderRadius:'6px',background:'rgba(255,255,255,.05)',border:'1px solid rgba(255,255,255,.1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}},
+      h('span',{style:{fontSize:'14px'}},'🚫'),
+      h('canvas',{ref:canvasRef,style:{display:'none'}})
+    ),
         // Timer
         h('div',{style:{background:'rgba(0,0,0,.3)',border:'1px solid '+timerColor+'40',borderRadius:'8px',padding:'4px 10px',minWidth:'70px',textAlign:'center'}},
           h('p',{style:{fontFamily:ORB,fontSize:'14px',fontWeight:'bold',color:timerColor,letterSpacing:'.05em'}},mins+':'+secs),
