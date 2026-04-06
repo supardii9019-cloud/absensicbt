@@ -4334,21 +4334,52 @@ function CbtQuestionsModal({exam,onClose}) {
   const handleImport=async()=>{
     const lines=importText.trim().split('\n').filter(l=>l.trim());
     if(!lines.length){alert('Format import kosong');return;}
-    const qs=lines.map((line,i)=>{
-      const parts=line.split('|');
-      if(parts.length<2) return null;
-      const q=parts[0].replace(/^\d+\.\s*/,'').trim();
-      if(!q) return null;
-      const opts=parts.slice(1,5).map(o=>o.replace(/^[A-E]\./,'').trim()).filter(Boolean);
-      const ans=(parts[5]||parts[parts.length-1]||'A').trim().toUpperCase();
-      return {id:genId(),exam_id:exam.id,type:'pg',question:q,options:opts,correct_answer:ans,score:1,order_num:questions.length+i+1};
-    }).filter(Boolean);
-    if(!qs.length){alert('Tidak ada soal valid. Periksa format: pertanyaan|A.opsi|B.opsi|C.opsi|D.opsi|JAWABAN');return;}
+    const qs=[];
+    const errors=[];
+    const LTRS=['A','B','C','D','E'];
+    lines.forEach((rawLine,i)=>{
+      let line=rawLine.trim();
+      if(!line) return;
+      line=line.replace(/^\d+[\.\)\s]\s*/,'').trim();
+      line=line.replace(/^No\.?\s*\d+[.:\s]+/i,'').trim();
+      if(!line) return;
+      if(!line.includes('|')){
+        errors.push('Baris '+(i+1)+': tidak ada pemisah | — dilewati');
+        return;
+      }
+      const parts=line.split('|').map(p=>p.trim());
+      if(parts.length<2) return;
+      const question=parts[0].trim();
+      if(!question) return;
+      const rawAns=(parts[parts.length-1]||'').trim().toUpperCase();
+      let type='pg',correct_answer='A',options=[];
+      if(rawAns==='ESSAY'||rawAns==='ISIAN'){
+        type='essay';correct_answer='';options=[];
+      } else if(rawAns==='BENAR'||rawAns==='SALAH'||rawAns==='TRUE'||rawAns==='FALSE'){
+        type='tf';correct_answer=(rawAns==='TRUE'?'BENAR':rawAns==='FALSE'?'SALAH':rawAns);options=[];
+      } else if(rawAns.includes(',')|| (rawAns.length>1&&/^[A-E]+$/.test(rawAns))){
+        type='mcma';
+        correct_answer=rawAns.replace(/,/g,'').split('').filter(c=>/[A-E]/.test(c));
+        options=parts.slice(1,parts.length-1).map(o=>o.replace(/^[A-Ea-e][.\)]\s*/,'').trim()).filter(o=>o);
+      } else {
+        type='pg';
+        correct_answer=LTRS.includes(rawAns)?rawAns:'A';
+        if(!LTRS.includes(rawAns)) errors.push('Baris '+(i+1)+': jawaban "'+rawAns+'" tidak valid, default A');
+        options=parts.slice(1,parts.length-1).map(o=>o.replace(/^[A-Ea-e][.\)]\s*/,'').trim()).filter(o=>o);
+      }
+      qs.push({id:genId(),exam_id:exam.id,type,question,options,correct_answer,score:1,order_num:questions.length+qs.length+1,media_url:null,media_type:null,option_media:[]});
+    });
+    if(!qs.length){
+      alert('Tidak ada soal berhasil diproses.'+(errors.length?'\n\nError:\n'+errors.slice(0,5).join('\n'):'\n\nPastikan format: Pertanyaan|A.Opsi|B.Opsi|C.Opsi|D.Opsi|JAWABAN'));
+      return;
+    }
+    const konfirm=confirm(qs.length+' soal siap diimport.'+(errors.length?'\n\u26a0\ufe0f '+errors.length+' baris bermasalah.':'')+'\n\nLanjutkan?');
+    if(!konfirm) return;
     try{
       await DB.saveCbtQuestionsBulk(qs);
       reload();setShowImport(false);setImportText('');
-      alert(qs.length+' soal berhasil diimport!');
-    }catch(e){alert('Gagal import: '+e.message);}
+      alert('\u2705 '+qs.length+' soal berhasil diimport!'+(errors.length?'\n\nPeringatan ('+errors.length+'):\n'+errors.slice(0,3).join('\n'):''));
+    }catch(e){alert('Gagal import ke database: '+e.message);}
   };
 
   const inSt={width:'100%',padding:'9px 12px',borderRadius:'10px',background:'var(--input-bg)',border:'1px solid var(--border)',color:'var(--text-primary)',fontFamily:MONO,fontSize:'11px',boxSizing:'border-box'};
