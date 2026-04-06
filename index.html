@@ -4227,12 +4227,27 @@ const kelasOptions = [...new Set([...kelasFromStudents,'Semua Kelas'])];
         )
       ),
       h('div',null,
-        h('label',{style:LBL},'Kelas / Target'),
-        h('select',{value:f.kelas||'',onChange:e=>upd('kelas')(e.target.value),style:inSt},
-          h('option',{value:''},'-- Pilih Kelas --'),
-          kelasOptions.map(k=>h('option',{key:k,value:k},k))
-        )
-      ),
+  h('label',{style:LBL},'Kelas / Target'),
+  h('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px',marginTop:'6px'}},
+    kelasOptions.filter(k=>k!=='Semua Kelas').map(k=>{
+      const selected=(f.kelas||'').split(',').map(x=>x.trim()).filter(Boolean).includes(k);
+      return h('button',{key:k,type:'button',onClick:()=>{
+        const arr=(f.kelas||'').split(',').map(x=>x.trim()).filter(Boolean);
+        const next=selected?arr.filter(x=>x!==k):[...arr,k];
+        upd('kelas')(next.join(', '));
+      },style:{padding:'6px 14px',borderRadius:'8px',fontSize:'11px',fontFamily:MONO,cursor:'pointer',border:'2px solid',
+        background:selected?'var(--accent-bg)':'transparent',
+        color:selected?'var(--accent)':'var(--text-muted)',
+        borderColor:selected?'var(--accent-dim)':'var(--border)',
+        fontWeight:selected?'bold':'normal',transition:'all .15s'}},k);
+    }),
+    h('button',{type:'button',onClick:()=>upd('kelas')(kelasOptions.filter(k=>k!=='Semua Kelas').join(', ')),
+      style:{padding:'6px 14px',borderRadius:'8px',fontSize:'11px',fontFamily:MONO,cursor:'pointer',border:'1px dashed var(--border)',color:'var(--text-muted)',background:'transparent'}},
+      'Semua')
+  ),
+  f.kelas&&h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)',marginTop:'6px'}},
+    'Dipilih: '+f.kelas)
+),
       h('div',null,
         h('label',{style:LBL},'Durasi (menit)'),
         h('input',{type:'number',min:5,max:300,value:f.duration_minutes||60,onChange:e=>upd('duration_minutes')(parseInt(e.target.value)),style:inSt})
@@ -4535,8 +4550,9 @@ function CbtResultAdmin({exams,students,onReload}) {
     // Filter students yang masuk kelas ujian
     const exam=exams.find(e=>e.id===examId);
     if(exam){
-      const kls=exam.kelas==='Semua Kelas'?null:exam.kelas;
-      setAllStudents(kls?sts.filter(st=>st.kelas===kls):sts);
+      const kelasList2=(exam.kelas||'').split(',').map(k=>k.trim()).filter(Boolean);
+const isSemua=kelasList2.includes('Semua Kelas')||kelasList2.length===0;
+setAllStudents(isSemua?sts:sts.filter(st=>kelasList2.includes(st.kelas)));
     }
     if(!silent) setLoading(false);
   };
@@ -4829,7 +4845,11 @@ function StudentCBT({student,settings,isDemo,onBack,onExamStart}) {
     setLoading(true);
     try {
       const all=await DB.getCbtExams();
-      const avail=all.filter(e=>e.status==='active'&&(e.kelas==='Semua Kelas'||e.kelas===student.kelas));
+      const avail=all.filter(e=>{
+  if(e.status!=='active') return false;
+  const kelasList=(e.kelas||'').split(',').map(k=>k.trim()).filter(Boolean);
+  return kelasList.includes('Semua Kelas')||kelasList.length===0||kelasList.includes(student.kelas);
+});
       setExams(avail);
     } catch(e) {
       console.error('Gagal load ujian:',e);
