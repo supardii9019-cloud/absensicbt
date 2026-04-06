@@ -4315,75 +4315,296 @@ const kelasOptions = [...new Set([...kelasFromStudents,'Semua Kelas'])];
 }
 
 // ── Modal Kelola Soal ──────────────────────────────────────────────
+<script id="bagian1-tempel-sebelum-CbtQuestionsModal">
+ 
+// ── Loader mammoth.js (hanya satu kali) ───────────────────────────
+let _mammothLoaded = false;
+async function loadMammoth() {
+  if (_mammothLoaded || window.mammoth) { _mammothLoaded = true; return; }
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js';
+    s.onload = () => { _mammothLoaded = true; res(); };
+    s.onerror = () => rej(new Error('Gagal memuat library mammoth.js. Periksa koneksi internet.'));
+    document.head.appendChild(s);
+  });
+}
+ 
+// ── Parser file .doc / .docx → array soal ────────────────────────
+async function parseSoalFromDocx(file) {
+  await loadMammoth();
+ 
+  const buf = await new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = e => res(e.target.result);
+    r.onerror = () => rej(new Error('Gagal membaca file'));
+    r.readAsArrayBuffer(file);
+  });
+ 
+  const result = await window.mammoth.extractRawText({ arrayBuffer: buf });
+  const teks   = (result.value || '').replace(/\r/g, '');
+  const soal   = [];
+ 
+  // ── STRATEGI 1: Format pipa (satu baris = satu soal) ───────────
+  // Contoh: 1. Pertanyaan|A.Opsi|B.Opsi|C.Opsi|D.Opsi|JAWABAN
+  const baris    = teks.split('\n').map(b => b.trim()).filter(Boolean);
+  const pipeBaris = baris.filter(b => b.includes('|') && b.split('|').length >= 2);
+ 
+  if (pipeBaris.length > 0) {
+    pipeBaris.forEach((line, idx) => {
+      const parts  = line.split('|').map(p => p.trim());
+      const soalTeks = parts[0].replace(/^\d+[\.\)]\s*/, '').trim();
+      if (!soalTeks) return;
+ 
+      const opts      = parts.slice(1, 5).map(o => o.replace(/^[A-Ea-e][\.\)]\s*/, '').trim()).filter(Boolean);
+      const jawRaw   = (parts[5] || parts[parts.length - 1] || 'A').trim().toUpperCase();
+      const baseItem = { id: genId(), exam_id: '', score: 1, order_num: idx + 1 };
+ 
+      if (jawRaw === 'BENAR' || jawRaw === 'SALAH') {
+        soal.push({ ...baseItem, type: 'tf', question: soalTeks, options: [], correct_answer: jawRaw });
+      } else if (jawRaw === 'ESSAY') {
+        soal.push({ ...baseItem, type: 'essay', question: soalTeks, options: [], correct_answer: '', score: 3 });
+      } else if (/^[A-E,\s]+$/.test(jawRaw) && (jawRaw.includes(',') || jawRaw.length > 1)) {
+        const corrArr = jawRaw.replace(/\s/g, '').split(',').filter(c => /^[A-E]$/.test(c));
+        if (corrArr.length > 1)
+          soal.push({ ...baseItem, type: 'mcma', question: soalTeks, options: opts, correct_answer: corrArr, score: corrArr.length });
+        else {
+          const corr = jawRaw.charAt(0);
+          soal.push({ ...baseItem, type: 'pg', question: soalTeks, options: opts, correct_answer: /^[A-E]$/.test(corr) ? corr : 'A' });
+        }
+      } else {
+        const corr = jawRaw.replace(/^([A-E])[\.\s].*/i, '$1').charAt(0).toUpperCase();
+        soal.push({ ...baseItem, type: 'pg', question: soalTeks, options: opts, correct_answer: /^[A-E]$/.test(corr) ? corr : 'A' });
+      }
+    });
+    if (soal.length > 0) return soal;
+  }
+ 
+  // ── STRATEGI 2: Format tabel vertikal (Template AbsensiKu) ──────
+  // Deteksi blok "Nomor Soal ... Skor" yang dihasilkan downloadTemplateSoalCBT()
+  const blokRe = /Nomor Soal[\s\S]*?(?=Nomor Soal|$)/g;
+  let match;
+  let urut = 0;
+ 
+  while ((match = blokRe.exec(teks)) !== null) {
+    const blok = match[0];
+    if (!blok.trim()) continue;
+    urut++;
+ 
+    // Pertanyaan: ambil teks antara "Pertanyaan" dan baris berikutnya bermakna
+    const pertMatch = blok.match(/Pertanyaan\s*\n([\s\S]*?)(?=\nA\b|\nB\b|\nJawaban|\nSkor|\nNomor|$)/i);
+    const pertanyaan = pertMatch ? pertMatch[1].replace(/^\s*(PG|MCMA|Benar\/Salah|Essay|B\/S)\s*/i, '').trim() : '';
+    if (!pertanyaan) continue;
+ 
+    // Tipe soal
+    const tipeMatch = blok.match(/\b(MCMA|Benar\/Salah|Essay|PG|B\/S)\b/i);
+    const tipe = tipeMatch ? tipeMatch[1].toUpperCase() : 'PG';
+ 
+    // Opsi A–E
+    const opts = [];
+    ['A','B','C','D','E'].forEach(h => {
+      const m = blok.match(new RegExp(h + '\\s*\\n([^\\n]+)', 'i'));
+      if (m) opts.push(m[1].trim());
+    });
+ 
+    // Jawaban benar
+    const jawMatch  = blok.match(/Jawaban Benar\s*\n([^\n]+)/i);
+    const jawabanTeks = jawMatch ? jawMatch[1].trim() : '';
+ 
+    // Skor
+    const skorMatch = blok.match(/Skor\s*\n(\d+)/i);
+    const skor = skorMatch ? parseInt(skorMatch[1]) : 1;
+ 
+    const baseItem = { id: genId(), exam_id: '', score: skor, order_num: urut };
+ 
+    if (/essay/i.test(tipe)) {
+      soal.push({ ...baseItem, type: 'essay', question: pertanyaan, options: [], correct_answer: '' });
+    } else if (/mcma/i.test(tipe)) {
+      const corrArr = jawabanTeks.replace(/[^A-E,]/gi, '').split(',').map(c=>c.trim().toUpperCase()).filter(c=>/^[A-E]$/.test(c));
+      soal.push({ ...baseItem, type: 'mcma', question: pertanyaan, options: opts, correct_answer: corrArr });
+    } else if (/benar|salah|b\/s/i.test(tipe)) {
+      const jawBS = /benar/i.test(jawabanTeks) ? 'BENAR' : 'SALAH';
+      soal.push({ ...baseItem, type: 'tf', question: pertanyaan, options: [], correct_answer: jawBS });
+    } else {
+      const m = jawabanTeks.match(/^([A-E])/i);
+      const corr = m ? m[1].toUpperCase() : 'A';
+      soal.push({ ...baseItem, type: 'pg', question: pertanyaan, options: opts, correct_answer: corr });
+    }
+  }
+ 
+  return soal;
+}
+ 
+// ── Komponen ImportPanel ──────────────────────────────────────────
+function ImportPanel({ examId, onImported, onClose }) {
+  const [mode,        setMode       ] = React.useState('file');
+  const [file,        setFile       ] = React.useState(null);
+  const [importText,  setImportText ] = React.useState('');
+  const [parsed,      setParsed     ] = React.useState([]);
+  const [loading,     setLoading    ] = React.useState(false);
+  const [error,       setError      ] = React.useState('');
+  const [step,        setStep       ] = React.useState('input'); // input | preview | done
+  const fileRef = React.useRef(null);
+ 
+  const MONO = 'JetBrains Mono,monospace';
+  const ORB  = 'Orbitron,monospace';
+  const h    = React.createElement;
+ 
+  // ── baca file ──────────────────────────────────────────────────
+  const handleFile = async e => {
+    const f = e.target.files[0];
+    if (!f) return;
+    setFile(f); setError(''); setLoading(true);
+    try {
+      const soal = await parseSoalFromDocx(f);
+      if (!soal.length) { setError('Tidak ada soal yang terbaca. Pastikan file menggunakan Template Soal AbsensiKu atau format pipa.'); setLoading(false); return; }
+      setParsed(soal.map(q => ({ ...q, exam_id: examId })));
+      setStep('preview');
+    } catch (ex) { setError('Gagal membaca file: ' + ex.message); }
+    setLoading(false);
+  };
+ 
+  // ── parse teks ─────────────────────────────────────────────────
+  const handleTextParse = () => {
+    setError('');
+    const lines = importText.trim().split('\n').filter(l => l.trim());
+    if (!lines.length) { setError('Teks import kosong'); return; }
+    const qs = lines.map((line, i) => {
+      const parts = line.split('|').map(p => p.trim());
+      const q = parts[0].replace(/^\d+[\.\)]\s*/, '').trim();
+      if (!q || parts.length < 2) return null;
+      const opts = parts.slice(1,5).map(o=>o.replace(/^[A-E][\.\)]\s*/,'').trim()).filter(Boolean);
+      const ans  = (parts[5]||parts[parts.length-1]||'A').trim().toUpperCase();
+      if (ans==='BENAR'||ans==='SALAH') return { id:genId(),exam_id:examId,type:'tf',question:q,options:[],correct_answer:ans,score:1,order_num:i+1 };
+      if (ans==='ESSAY') return { id:genId(),exam_id:examId,type:'essay',question:q,options:[],correct_answer:'',score:3,order_num:i+1 };
+      const corrArr = ans.replace(/\s/g,'').split(',').filter(c=>/^[A-E]$/.test(c));
+      if (corrArr.length>1) return { id:genId(),exam_id:examId,type:'mcma',question:q,options:opts,correct_answer:corrArr,score:corrArr.length,order_num:i+1 };
+      return { id:genId(),exam_id:examId,type:'pg',question:q,options:opts,correct_answer:ans.charAt(0)||'A',score:1,order_num:i+1 };
+    }).filter(Boolean);
+    if (!qs.length) { setError('Tidak ada soal valid. Cek format.'); return; }
+    setParsed(qs); setStep('preview');
+  };
+ 
+  // ── simpan ─────────────────────────────────────────────────────
+  const doSave = async () => {
+    setLoading(true); setError('');
+    try {
+      await DB.saveCbtQuestionsBulk(parsed);
+      setStep('done');
+      setTimeout(() => { onImported(); onClose(); }, 1200);
+    } catch (ex) { setError('Gagal simpan: ' + ex.message); }
+    setLoading(false);
+  };
+ 
+  const btnBase = { fontFamily:MONO, fontSize:'11px', cursor:'pointer', borderRadius:'12px', padding:'12px' };
+  const tagColor = t => ({ essay:'rgba(168,85,247,.15)',mcma:'rgba(251,146,60,.15)',tf:'rgba(250,204,21,.15)',pg:'rgba(0,240,255,.1)' }[t]||'rgba(0,240,255,.1)');
+  const tagTxt   = t => ({ essay:'#a855f7',mcma:'#fb923c',tf:'#facc15',pg:'#00f0ff' }[t]||'#00f0ff');
+  const tagLabel = t => ({ essay:'ESSAY',mcma:'MCMA',tf:'B/S',pg:'PG' }[t]||t);
+ 
+  // Selesai
+  if (step==='done') return h('div',{style:{textAlign:'center',padding:'32px'}},
+    h('p',{style:{fontSize:'40px',marginBottom:'12px'}},'✅'),
+    h('p',{style:{fontFamily:ORB,color:'#00ff88',fontSize:'13px',letterSpacing:'.08em'}},parsed.length+' SOAL BERHASIL DIIMPORT')
+  );
+ 
+  // Preview
+  if (step==='preview') return h('div',{style:{display:'flex',flexDirection:'column',gap:'14px'}},
+    h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between'}},
+      h('p',{style:{fontFamily:ORB,fontSize:'12px',color:'var(--accent)',letterSpacing:'.06em'}},'PREVIEW — '+parsed.length+' SOAL SIAP DIIMPORT'),
+      h('button',{onClick:()=>{setStep('input');setFile(null);},style:{fontSize:'9px',fontFamily:MONO,background:'none',border:'1px solid var(--border)',borderRadius:'6px',color:'var(--text-muted)',padding:'4px 10px',cursor:'pointer'}},'← Ubah')
+    ),
+    h('div',{style:{maxHeight:'300px',overflowY:'auto',display:'flex',flexDirection:'column',gap:'8px'}},
+      parsed.map((q,i)=>h('div',{key:q.id,style:{padding:'10px 12px',borderRadius:'10px',background:'var(--bg-card)',border:'1px solid var(--border)'}},
+        h('div',{style:{display:'flex',gap:'8px',alignItems:'flex-start'}},
+          h('span',{style:{fontFamily:MONO,fontSize:'10px',color:'var(--accent)',fontWeight:'bold',flexShrink:0}},(i+1)+'.'),
+          h('div',{style:{flex:1}},
+            h('span',{style:{fontSize:'8px',fontFamily:MONO,background:tagColor(q.type),color:tagTxt(q.type),padding:'1px 5px',borderRadius:'4px',marginRight:'6px'}}},tagLabel(q.type)),
+            h('span',{style:{fontSize:'11px',color:'var(--text-secondary)',fontFamily:MONO}},q.question.length>80?q.question.slice(0,80)+'…':q.question)
+          )
+        )
+      ))
+    ),
+    error&&h('p',{style:{color:'#f87171',fontSize:'10px',fontFamily:MONO,padding:'8px 12px',borderRadius:'8px',background:'rgba(239,68,68,.06)',border:'1px solid rgba(239,68,68,.2)'}},error),
+    h('div',{style:{display:'flex',gap:'10px'}},
+      h('button',{onClick:()=>{setStep('input');setFile(null);},style:{...btnBase,flex:1,border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)'}},'Batal'),
+      h('button',{onClick:doSave,disabled:loading,style:{...btnBase,flex:2,background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',fontWeight:'bold',opacity:loading?.5:1}},loading?'Menyimpan...':'💾 Simpan '+parsed.length+' Soal')
+    )
+  );
+ 
+  // Input
+  return h('div',{style:{display:'flex',flexDirection:'column',gap:'14px'}},
+    // Tab pilih mode
+    h('div',{style:{display:'flex',borderRadius:'10px',border:'1px solid var(--border)',overflow:'hidden'}},
+      [{id:'file',label:'📄 Upload File .doc/.docx'},{id:'text',label:'✏️ Tempel Teks'}].map(m=>
+        h('button',{key:m.id,onClick:()=>{setMode(m.id);setError('');},style:{flex:1,padding:'10px 4px',background:mode===m.id?'rgba(0,240,255,.1)':'none',border:'none',color:mode===m.id?'#00f0ff':'var(--text-muted)',fontFamily:MONO,fontSize:'10px',cursor:'pointer'}},m.label)
+      )
+    ),
+ 
+    // Mode: file
+    mode==='file'&&h('div',{style:{display:'flex',flexDirection:'column',gap:'12px'}},
+      h('div',{
+        onClick:()=>fileRef.current&&fileRef.current.click(),
+        style:{border:'2px dashed var(--accent-dim)',borderRadius:'14px',padding:'32px 20px',textAlign:'center',cursor:'pointer',background:'var(--input-bg)'}
+      },
+        h('p',{style:{fontSize:'36px',marginBottom:'8px'}},'📂'),
+        file
+          ?h('p',{style:{fontFamily:MONO,fontSize:'12px',color:'#00ff88'}},'✓ '+file.name)
+          :h('div',null,
+              h('p',{style:{fontFamily:MONO,fontSize:'12px',color:'var(--text-secondary)',marginBottom:'4px'}},'Klik untuk pilih file .doc atau .docx'),
+              h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)'}},'Template Soal AbsensiKu atau format pipa')
+            ),
+        h('input',{ref:fileRef,type:'file',accept:'.doc,.docx',onChange:handleFile,style:{display:'none'}})
+      ),
+      h('div',{style:{padding:'10px 12px',borderRadius:'10px',background:'rgba(0,240,255,.04)',border:'1px solid rgba(0,240,255,.1)'}},
+        h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--accent-dim)',lineHeight:'1.8'}},'✅ Didukung:\n• Template Soal AbsensiKu (.doc yang didownload dari aplikasi)\n• File .docx berisi soal format pipa (satu soal per baris)\n• PG, MCMA, Benar/Salah, dan Essay otomatis terdeteksi')
+      ),
+      loading&&h('div',{style:{display:'flex',alignItems:'center',gap:'10px',padding:'12px',borderRadius:'10px',background:'rgba(0,240,255,.05)',border:'1px solid var(--accent-dim)'}},
+        h('div',{style:{width:'20px',height:'20px',border:'2px solid var(--accent-dim)',borderTopColor:'var(--accent)',borderRadius:'50%',animation:'spin-slow .7s linear infinite',flexShrink:0}}),
+        h('p',{style:{fontFamily:MONO,fontSize:'11px',color:'var(--accent)'}},'Membaca file dan mengekstrak soal...')
+      )
+    ),
+ 
+    // Mode: teks
+    mode==='text'&&h('div',{style:{display:'flex',flexDirection:'column',gap:'10px'}},
+      h('div',{style:{padding:'10px 12px',borderRadius:'10px',background:'rgba(0,240,255,.04)',border:'1px solid rgba(0,240,255,.1)'}},
+        h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)',lineHeight:'1.7'}},
+          'Format per baris: Pertanyaan|A.Opsi|B.Opsi|C.Opsi|D.Opsi|HURUF\n'+
+          'B/S: Pernyataan.|BENAR  •  Essay: Soal!|ESSAY  •  MCMA: Soal|A.x|B.x|A,C'
+        )
+      ),
+      h('textarea',{value:importText,onChange:e=>setImportText(e.target.value),rows:6,
+        placeholder:'1. Ibukota Indonesia?|A.Bandung|B.Jakarta|C.Surabaya|D.Medan|B\n2. Air mendidih 100°C.|BENAR',
+        style:{width:'100%',padding:'12px',borderRadius:'10px',background:'var(--input-bg)',border:'1px solid var(--border)',color:'var(--text-primary)',fontFamily:MONO,fontSize:'11px',lineHeight:'1.6',resize:'vertical',boxSizing:'border-box',outline:'none'}
+      }),
+      h('button',{onClick:handleTextParse,disabled:!importText.trim(),
+        style:{...btnBase,background:'var(--accent-bg)',border:'1px solid var(--accent-dim)',color:'var(--accent)',fontWeight:'bold',opacity:!importText.trim()?.4:1}},
+        'Proses Soal →')
+    ),
+ 
+    error&&h('p',{style:{color:'#f87171',fontSize:'10px',fontFamily:MONO,padding:'8px 12px',borderRadius:'8px',background:'rgba(239,68,68,.06)',border:'1px solid rgba(239,68,68,.2)'}},error)
+  );
+}
+</script>
+  // Ganti function CbtQuestionsModal({exam,onClose}) { ... } lama dengan ini:
+ 
 function CbtQuestionsModal({exam,onClose}) {
   const [questions,setQuestions]=useState([]);
   const [loading,setLoading]=useState(true);
   const [editQ,setEditQ]=useState(null);
-  const [importText,setImportText]=useState('');
+  // GANTI showImport boolean → pakai ImportPanel
   const [showImport,setShowImport]=useState(false);
-
+ 
   const reload=async()=>{
     setLoading(true);
     const q=await DB.getCbtQuestions(exam.id);
     setQuestions(q);setLoading(false);
   };
   useEffect(()=>{reload();},[]);
-
+ 
   const newQ=()=>setEditQ({id:genId(),exam_id:exam.id,type:'pg',question:'',options:['','','','',''],correct_answer:'A',score:1,order_num:questions.length+1});
-
-  const handleImport=async()=>{
-    const lines=importText.trim().split('\n').filter(l=>l.trim());
-    if(!lines.length){alert('Format import kosong');return;}
-    const qs=[];
-    const errors=[];
-    const LTRS=['A','B','C','D','E'];
-    lines.forEach((rawLine,i)=>{
-      let line=rawLine.trim();
-      if(!line) return;
-      line=line.replace(/^\d+[\.\)\s]\s*/,'').trim();
-      line=line.replace(/^No\.?\s*\d+[.:\s]+/i,'').trim();
-      if(!line) return;
-      if(!line.includes('|')){
-        errors.push('Baris '+(i+1)+': tidak ada pemisah | — dilewati');
-        return;
-      }
-      const parts=line.split('|').map(p=>p.trim());
-      if(parts.length<2) return;
-      const question=parts[0].trim();
-      if(!question) return;
-      const rawAns=(parts[parts.length-1]||'').trim().toUpperCase();
-      let type='pg',correct_answer='A',options=[];
-      if(rawAns==='ESSAY'||rawAns==='ISIAN'){
-        type='essay';correct_answer='';options=[];
-      } else if(rawAns==='BENAR'||rawAns==='SALAH'||rawAns==='TRUE'||rawAns==='FALSE'){
-        type='tf';correct_answer=(rawAns==='TRUE'?'BENAR':rawAns==='FALSE'?'SALAH':rawAns);options=[];
-      } else if(rawAns.includes(',')|| (rawAns.length>1&&/^[A-E]+$/.test(rawAns))){
-        type='mcma';
-        correct_answer=rawAns.replace(/,/g,'').split('').filter(c=>/[A-E]/.test(c));
-        options=parts.slice(1,parts.length-1).map(o=>o.replace(/^[A-Ea-e][.\)]\s*/,'').trim()).filter(o=>o);
-      } else {
-        type='pg';
-        correct_answer=LTRS.includes(rawAns)?rawAns:'A';
-        if(!LTRS.includes(rawAns)) errors.push('Baris '+(i+1)+': jawaban "'+rawAns+'" tidak valid, default A');
-        options=parts.slice(1,parts.length-1).map(o=>o.replace(/^[A-Ea-e][.\)]\s*/,'').trim()).filter(o=>o);
-      }
-      qs.push({id:genId(),exam_id:exam.id,type,question,options,correct_answer,score:1,order_num:questions.length+qs.length+1,media_url:null,media_type:null,option_media:[]});
-    });
-    if(!qs.length){
-      alert('Tidak ada soal berhasil diproses.'+(errors.length?'\n\nError:\n'+errors.slice(0,5).join('\n'):'\n\nPastikan format: Pertanyaan|A.Opsi|B.Opsi|C.Opsi|D.Opsi|JAWABAN'));
-      return;
-    }
-    const konfirm=confirm(qs.length+' soal siap diimport.'+(errors.length?'\n\u26a0\ufe0f '+errors.length+' baris bermasalah.':'')+'\n\nLanjutkan?');
-    if(!konfirm) return;
-    try{
-      await DB.saveCbtQuestionsBulk(qs);
-      reload();setShowImport(false);setImportText('');
-      alert('\u2705 '+qs.length+' soal berhasil diimport!'+(errors.length?'\n\nPeringatan ('+errors.length+'):\n'+errors.slice(0,3).join('\n'):''));
-    }catch(e){alert('Gagal import ke database: '+e.message);}
-  };
-
+ 
   const inSt={width:'100%',padding:'9px 12px',borderRadius:'10px',background:'var(--input-bg)',border:'1px solid var(--border)',color:'var(--text-primary)',fontFamily:MONO,fontSize:'11px',boxSizing:'border-box'};
-
+ 
   return h('div',{onClick:onClose,style:{position:'fixed',inset:0,zIndex:200,background:'rgba(0,0,0,.75)',backdropFilter:'blur(6px)',display:'flex',alignItems:'flex-start',justifyContent:'center',padding:'16px',overflowY:'auto'}},
     h('div',{onClick:e=>e.stopPropagation(),style:{width:'min(640px,100%)',background:'var(--bg-panel-s)',borderRadius:'20px',border:'1px solid var(--accent-dim)',padding:'24px',display:'flex',flexDirection:'column',gap:'16px',marginTop:'8px',marginBottom:'32px'}},
       h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:'8px'}},
@@ -4391,22 +4612,25 @@ function CbtQuestionsModal({exam,onClose}) {
           h('h3',{style:{fontFamily:ORB,color:'var(--accent)',fontSize:'13px',letterSpacing:'.07em'}},'📝 Soal: '+exam.title),
           h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)',marginTop:'2px'}},questions.length+' soal terdaftar')
         ),
-        h('div',{style:{display:'flex',gap:'8px'}},
-          h('button',{onClick:()=>setShowImport(!showImport),style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📥 Import'),
-h('button',{onClick:downloadTemplateSoalCBT,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid rgba(0,255,136,.3)',background:'rgba(0,255,136,.08)',color:'#00ff88',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📄 Template'),
+        h('div',{style:{display:'flex',gap:'8px',flexWrap:'wrap'}},
+          h('button',{onClick:()=>setShowImport(!showImport),style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid '+(showImport?'rgba(0,240,255,.4)':'var(--border)'),background:showImport?'rgba(0,240,255,.1)':'transparent',color:showImport?'#00f0ff':'var(--text-secondary)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📥 Import'),
+          h('button',{onClick:downloadTemplateSoalCBT,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid rgba(0,255,136,.3)',background:'rgba(0,255,136,.08)',color:'#00ff88',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📄 Template'),
           h('button',{onClick:newQ,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--accent-dim)',background:'var(--accent-bg)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'+Soal'),
           h('button',{onClick:onClose,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'✕ Tutup')
         )
       ),
-
-      showImport&&h('div',{style:{padding:'14px',borderRadius:'12px',background:'rgba(0,240,255,.04)',border:'1px solid rgba(0,240,255,.15)'}},
-        h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)',marginBottom:'6px',lineHeight:'1.6'}},'Format per baris: 1. Pertanyaan|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|JAWABAN'),
-        h('textarea',{value:importText,onChange:e=>setImportText(e.target.value),rows:5,placeholder:'1. Ibukota Indonesia adalah?|A.Bandung|B.Jakarta|C.Surabaya|D.Medan|B',style:{...inSt,resize:'vertical'}}),
-        h('button',{onClick:handleImport,disabled:!importText.trim(),style:{marginTop:'8px',padding:'8px 16px',borderRadius:'8px',border:'1px solid var(--accent-dim)',background:'var(--accent-bg)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'10px',opacity:!importText.trim()?0.4:1}},'Import Soal')
+ 
+      // ─── Panel Import (baru: mendukung upload .doc/.docx) ─────────
+      showImport && h('div',{style:{borderRadius:'14px',border:'1px solid var(--accent-dim)',background:'rgba(0,240,255,.03)',padding:'16px'}},
+        h(ImportPanel,{
+          examId: exam.id,
+          onImported: reload,
+          onClose: () => setShowImport(false)
+        })
       ),
-
+ 
       loading?h(LoadingScreen,{msg:'Memuat soal...'}):
-      questions.length===0?h('p',{style:{textAlign:'center',color:'var(--text-muted)',fontFamily:MONO,fontSize:'11px',padding:'24px'}},'Belum ada soal. Klik "+Soal" untuk menambah.'):
+      questions.length===0?h('p',{style:{textAlign:'center',color:'var(--text-muted)',fontFamily:MONO,fontSize:'11px',padding:'24px'}},'Belum ada soal. Klik "+Soal" atau "Import".'):
       h('div',{style:{display:'flex',flexDirection:'column',gap:'8px',maxHeight:'400px',overflowY:'auto'}},
         questions.map((q,qi)=>h('div',{key:q.id,style:{padding:'12px',borderRadius:'12px',background:'var(--bg-card)',border:'1px solid var(--border)'}},
           h('div',{style:{display:'flex',alignItems:'flex-start',justifyContent:'space-between',gap:'8px'}},
@@ -4431,7 +4655,7 @@ h('button',{onClick:downloadTemplateSoalCBT,style:{padding:'7px 12px',borderRadi
           )
         ))
       ),
-
+ 
       editQ&&h(CbtQuestionEditor,{q:editQ,onClose:()=>setEditQ(null),onSave:async q=>{await DB.saveCbtQuestion(q);setEditQ(null);reload();},allowEssay:exam.allow_essay})
     )
   );
