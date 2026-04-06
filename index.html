@@ -221,6 +221,7 @@ body, #root { overflow-x: hidden !important; max-width: 100vw; }
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.6.0/mammoth.browser.min.js"></script>
 <script>
 'use strict';
 // ── DOWNLOAD TEMPLATE SOAL CBT ────────────────────────────────
@@ -4330,7 +4331,39 @@ function CbtQuestionsModal({exam,onClose}) {
   useEffect(()=>{reload();},[]);
 
   const newQ=()=>setEditQ({id:genId(),exam_id:exam.id,type:'pg',question:'',options:['','','','',''],correct_answer:'A',score:1,order_num:questions.length+1});
-
+const parseDocFile=(file,onResult)=>{
+  const ext=file.name.split('.').pop().toLowerCase();
+  const reader=new FileReader();
+  if(ext==='docx'||ext==='doc'){
+    reader.onload=async(e)=>{
+      try{
+        if(window.mammoth){
+          const arr=e.target.result;
+          const res=await mammoth.extractRawText({arrayBuffer:arr});
+          onResult(res.value||'');
+        }else{
+          alert('Library mammoth.js belum siap. Coba lagi dalam beberapa detik.');
+        }
+      }catch(err){alert('Gagal baca .doc/.docx: '+err.message);}
+    };
+    reader.readAsArrayBuffer(file);
+  }else if(ext==='xlsx'||ext==='xls'){
+    reader.onload=(e)=>{
+      try{
+        if(!window.XLSX){alert('Library XLSX belum siap.');return;}
+        const wb=window.XLSX.read(e.target.result,{type:'binary'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const rows=window.XLSX.utils.sheet_to_json(ws,{header:1});
+        const lines=rows.filter(r=>r&&r.length>=2&&String(r[0]||'').trim()).map(r=>r.map(c=>String(c||'').trim()).join('|'));
+        onResult(lines.join('\n'));
+      }catch(err){alert('Gagal baca Excel: '+err.message);}
+    };
+    reader.readAsBinaryString(file);
+  }else{
+    reader.onload=(e)=>{onResult(e.target.result||'');};
+    reader.readAsText(file,'UTF-8');
+  }
+};
   const handleImport=async()=>{
     const lines=importText.trim().split('\n').filter(l=>l.trim());
     if(!lines.length){alert('Format import kosong');return;}
@@ -4368,11 +4401,32 @@ h('button',{onClick:downloadTemplateSoalCBT,style:{padding:'7px 12px',borderRadi
         )
       ),
 
-      showImport&&h('div',{style:{padding:'14px',borderRadius:'12px',background:'rgba(0,240,255,.04)',border:'1px solid rgba(0,240,255,.15)'}},
-        h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)',marginBottom:'6px',lineHeight:'1.6'}},'Format per baris: 1. Pertanyaan|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|JAWABAN'),
-        h('textarea',{value:importText,onChange:e=>setImportText(e.target.value),rows:5,placeholder:'1. Ibukota Indonesia adalah?|A.Bandung|B.Jakarta|C.Surabaya|D.Medan|B',style:{...inSt,resize:'vertical'}}),
-        h('button',{onClick:handleImport,disabled:!importText.trim(),style:{marginTop:'8px',padding:'8px 16px',borderRadius:'8px',border:'1px solid var(--accent-dim)',background:'var(--accent-bg)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'10px',opacity:!importText.trim()?0.4:1}},'Import Soal')
-      ),
+     showImport&&h('div',{style:{padding:'14px',borderRadius:'12px',background:'rgba(0,240,255,.04)',border:'1px solid rgba(0,240,255,.15)'}},
+  h('p',{style:{fontFamily:MONO,fontSize:'9px',color:'var(--text-muted)',marginBottom:'10px',lineHeight:'1.6'}},'Format per baris: 1. Pertanyaan|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|JAWABAN'),
+  h('div',{style:{display:'flex',alignItems:'center',gap:'8px',marginBottom:'10px',padding:'10px 12px',borderRadius:'10px',background:'rgba(168,85,247,.06)',border:'1px solid rgba(168,85,247,.25)'}},
+    h('div',{style:{flex:1}},
+      h('p',{style:{fontSize:'11px',fontFamily:MONO,color:'#a855f7',fontWeight:'bold',marginBottom:'2px'}},'Upload File Soal'),
+      h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)'}},'Mendukung: .doc  .docx  .txt  .xlsx')
+    ),
+    h('label',{style:{padding:'8px 16px',borderRadius:'8px',background:'rgba(168,85,247,.15)',border:'1px solid rgba(168,85,247,.4)',color:'#a855f7',fontSize:'10px',fontFamily:MONO,cursor:'pointer',whiteSpace:'nowrap',display:'flex',alignItems:'center',gap:'6px'}},
+      h('span',null,'📂 Pilih File'),
+      h('input',{type:'file',accept:'.doc,.docx,.txt,.xlsx,.xls',style:{display:'none'},
+        onChange:e=>{
+          const file=e.target.files&&e.target.files[0];
+          if(!file)return;
+          parseDocFile(file,(text)=>{
+            setImportText(text);
+            alert('File berhasil dibaca! '+text.split('\n').filter(l=>l.trim()).length+' baris ditemukan. Periksa isi di kotak teks lalu klik Import.');
+          });
+          e.target.value='';
+        }
+      })
+    )
+  ),
+  h('textarea',{value:importText,onChange:e=>setImportText(e.target.value),rows:6,placeholder:'Atau ketik/paste langsung di sini:\n1. Pertanyaan?|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|B\n2. Soal berikutnya?|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|A',style:{...inSt,resize:'vertical'}}),
+  importText&&h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--accent)',marginTop:'4px',marginBottom:'4px'}},'✓ '+importText.split('\n').filter(l=>l.trim()).length+' baris siap diimport'),
+  h('button',{onClick:handleImport,disabled:!importText.trim(),style:{marginTop:'8px',padding:'8px 16px',borderRadius:'8px',border:'1px solid var(--accent-dim)',background:'var(--accent-bg)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'10px',opacity:!importText.trim()?0.4:1}},'Import Soal')
+),
 
       loading?h(LoadingScreen,{msg:'Memuat soal...'}):
       questions.length===0?h('p',{style:{textAlign:'center',color:'var(--text-muted)',fontFamily:MONO,fontSize:'11px',padding:'24px'}},'Belum ada soal. Klik "+Soal" untuk menambah.'):
