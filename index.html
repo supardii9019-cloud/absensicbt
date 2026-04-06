@@ -859,9 +859,14 @@ const DB = {
   // ── CBT ──────────────────────────────────────────────────────────
   async getCbtExams(kelas) {
     let q = sb.from('cbt_exams').order('created_at',{ascending:false});
-    if(kelas) q = q.eq('kelas',kelas);
     const {data} = await q.get();
-    return data||[];
+    if(!kelas) return data||[];
+    return (data||[]).filter(e=>{
+      if(!e.kelas) return false;
+      if(e.kelas==='Semua Kelas') return true;
+      const kelasList=e.kelas.split(',').map(x=>x.trim());
+      return kelasList.includes(kelas);
+    });
   },
   async saveCbtExam(exam) {
     return sb.from('cbt_exams').upsert({
@@ -4227,12 +4232,33 @@ const kelasOptions = [...new Set([...kelasFromStudents,'Semua Kelas'])];
         )
       ),
       h('div',null,
-        h('label',{style:LBL},'Kelas / Target'),
-        h('select',{value:f.kelas||'',onChange:e=>upd('kelas')(e.target.value),style:inSt},
-          h('option',{value:''},'-- Pilih Kelas --'),
-          kelasOptions.map(k=>h('option',{key:k,value:k},k))
-        )
-      ),
+  h('label',{style:LBL},'Kelas / Target'),
+  h('div',{style:{display:'flex',flexWrap:'wrap',gap:'8px',marginTop:'6px'}},
+    ['Semua Kelas',...kelasFromStudents].map(k=>{
+      const selected=(f.kelas||'').split(',').map(x=>x.trim()).filter(Boolean).includes(k);
+      return h('button',{key:k,type:'button',onClick:()=>{
+        const arr=(f.kelas||'').split(',').map(x=>x.trim()).filter(Boolean);
+        if(k==='Semua Kelas'){
+          upd('kelas')(selected?'':'Semua Kelas');
+        } else {
+          const filtered=arr.filter(x=>x!=='Semua Kelas');
+          const next=selected?filtered.filter(x=>x!==k):[...filtered,k];
+          upd('kelas')(next.join(', '));
+        }
+      },style:{
+        padding:'6px 12px',borderRadius:'20px',fontSize:'11px',fontFamily:MONO,
+        cursor:'pointer',border:'1px solid',
+        background:selected?'var(--accent-bg)':'transparent',
+        color:selected?'var(--accent)':'var(--text-muted)',
+        borderColor:selected?'var(--accent-dim)':'var(--border)',
+        fontWeight:selected?'bold':'normal',
+        transition:'all .15s'
+      }},k);
+    })
+  ),
+  f.kelas&&h('p',{style:{fontSize:'9px',fontFamily:MONO,color:'var(--text-muted)',marginTop:'6px'}},
+    'Dipilih: '+(f.kelas||'—'))
+),
       h('div',null,
         h('label',{style:LBL},'Durasi (menit)'),
         h('input',{type:'number',min:5,max:300,value:f.duration_minutes||60,onChange:e=>upd('duration_minutes')(parseInt(e.target.value)),style:inSt})
@@ -4536,8 +4562,12 @@ function CbtResultAdmin({exams,students,onReload}) {
     const exam=exams.find(e=>e.id===examId);
     if(exam){
       const kls=exam.kelas==='Semua Kelas'?null:exam.kelas;
-      setAllStudents(kls?sts.filter(st=>st.kelas===kls):sts);
-    }
+      if(!kls){
+        setAllStudents(sts);
+      } else {
+        const kelasList=kls.split(',').map(x=>x.trim());
+        setAllStudents(sts.filter(st=>kelasList.includes(st.kelas)));
+      }
     if(!silent) setLoading(false);
   };
 
@@ -4829,7 +4859,13 @@ function StudentCBT({student,settings,isDemo,onBack,onExamStart}) {
     setLoading(true);
     try {
       const all=await DB.getCbtExams();
-      const avail=all.filter(e=>e.status==='active'&&(e.kelas==='Semua Kelas'||e.kelas===student.kelas));
+      const avail=all.filter(e=>{
+  if(e.status!=='active') return false;
+  if(!e.kelas) return false;
+  if(e.kelas==='Semua Kelas') return true;
+  const kelasList=e.kelas.split(',').map(x=>x.trim());
+  return kelasList.includes(student.kelas);
+});
       setExams(avail);
     } catch(e) {
       console.error('Gagal load ujian:',e);
