@@ -1926,7 +1926,7 @@ function LoginScreen({onLogin}) {
   const[settings,setSettings]=useState(null);
   useEffect(()=>{DB.getSettings().then(s=>{setSettings(s);});},[]);
   const loginAdmin=async()=>{
-    if(username==='demo.admin'&&password==='demo123'){
+    if('){
       onLogin({role:'admin',isDemo:true,adminData:{role:'superadmin',name:'Demo Admin'}});return;
     }
     setLoading(true);setError('');
