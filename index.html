@@ -223,6 +223,42 @@ body, #root { overflow-x: hidden !important; max-width: 100vw; }
 <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
 <script>
 'use strict';
+// ── DOWNLOAD TEMPLATE SOAL CBT ────────────────────────────────
+function downloadTemplateSoalCBT() {
+  const now = new Date().toLocaleDateString('id-ID',{day:'2-digit',month:'long',year:'numeric'});
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif;font-size:11pt;margin:2cm;color:#222}h1{font-size:18pt;color:#1A3A6B;text-align:center;border-bottom:3px solid #2E74B5;padding-bottom:8px;margin-bottom:4px}h2{font-size:13pt;color:#2E74B5;margin-top:22px;margin-bottom:6px}h3{font-size:11pt;color:#404040;margin-top:14px;margin-bottom:4px}.subtitle{text-align:center;font-style:italic;color:#555;margin-bottom:20px}.note{color:#888;font-style:italic;font-size:9.5pt;margin:4px 0 4px 16px}.divider{border:none;border-top:2px solid #DDD;margin:18px 0}table{border-collapse:collapse;width:100%;margin:10px 0}th{background:#2E74B5;color:#fff;padding:6px 10px;font-size:10pt;text-align:left;border:1px solid #AAA}td{padding:6px 10px;font-size:10pt;border:1px solid #CCC}tr:nth-child(even) td{background:#EEF4FB}.code-block{background:#EEF4FB;border-left:4px solid #2E74B5;padding:8px 14px;font-family:'Courier New',monospace;font-size:10pt;color:#1A3A6B;margin:8px 0 8px 16px;white-space:pre-wrap;word-break:break-all}.code-line{background:#EEF4FB;font-family:'Courier New',monospace;font-size:9.5pt;color:#1A3A6B;padding:3px 10px;display:block;margin:2px 0}.code-line.alt{background:#F5F9FF;color:#2E5FA0}.soal-box{border:1px solid #CCC;border-radius:4px;padding:10px 16px;margin:10px 0;background:#FAFCFF}.soal-no{font-weight:bold}.opsi{margin:2px 0 2px 24px;font-size:10.5pt}.opsi.benar{color:#2E74B5;font-weight:bold}.footer{text-align:center;font-size:9pt;color:#AAA;font-style:italic;border-top:1px solid #DDD;margin-top:30px;padding-top:10px}</style></head><body>
+<h1>TEMPLATE SOAL CBT — ABSENSIKU</h1><p class="subtitle">Format Import Soal Ujian (Computer Based Test) | Dibuat: ${now}</p>
+<h2>📋 PANDUAN PENGGUNAAN</h2><p>Setiap soal ditulis dalam <strong>satu baris</strong> dengan pemisah tanda <code>|</code> (pipe). Paste ke kotak Import Soal di AbsensiKu.</p><div class="code-block">Format umum: Pertanyaan|A.Opsi A|B.Opsi B|C.Opsi C|D.Opsi D|JAWABAN</div>
+<hr class="divider">
+<h2>1️⃣ PILIHAN GANDA (PG) — Satu Jawaban Benar</h2><p>Pilih satu jawaban dari A–E. Minimal 2 pilihan, maksimal 5.</p><table><tr><th>Elemen</th><th>Keterangan</th></tr><tr><td>Pertanyaan</td><td>Teks soal</td></tr><tr><td>A. / B. / C. / D. / E.</td><td>Pilihan jawaban (titik setelah huruf wajib ada)</td></tr><tr><td>JAWABAN</td><td>Huruf kapital: A, B, C, D, atau E</td></tr></table><h3>Format Import PG:</h3><div class="code-block">1. Berapakah hasil 5 × 8?|A.30|B.35|C.40|D.45|E.50|C</div>
+<hr class="divider">
+<h2>2️⃣ MULTI JAWABAN (MCMA) — Lebih dari Satu Jawaban Benar</h2><p>Pilih <strong>semua jawaban yang benar</strong>. Nilai diberikan secara proporsional.</p><table><tr><th>Elemen</th><th>Keterangan</th></tr><tr><td>Pertanyaan</td><td>Teks soal</td></tr><tr><td>A. – E.</td><td>Pilihan jawaban</td></tr><tr><td>JAWABAN</td><td>Gabungan huruf kapital tanpa spasi: AB, ACE, BDE, dst.</td></tr></table><h3>Format Import MCMA:</h3><div class="code-block">2. Manakah bilangan prima? (pilih semua)|A.2|B.4|C.7|D.9|E.11|ACE</div>
+<hr class="divider">
+<h2>3️⃣ BENAR / SALAH (TF)</h2><p>Siswa memilih BENAR atau SALAH. Tidak perlu tulis pilihan A/B.</p><table><tr><th>Elemen</th><th>Keterangan</th></tr><tr><td>Pertanyaan</td><td>Pernyataan</td></tr><tr><td>JAWABAN</td><td>Tulis: BENAR atau SALAH (huruf kapital semua)</td></tr></table><h3>Format Import TF:</h3><div class="code-block">3. Matahari terbit dari arah barat.|SALAH</div>
+<hr class="divider">
+<h2>4️⃣ ESSAY — Jawaban Uraian</h2><p>Dinilai manual oleh guru. Tidak perlu kunci jawaban.</p><table><tr><th>Elemen</th><th>Keterangan</th></tr><tr><td>Pertanyaan</td><td>Pertanyaan uraian</td></tr><tr><td>JAWABAN</td><td>Cukup akhiri dengan |ESSAY</td></tr></table><h3>Format Import Essay:</h3><div class="code-block">4. Jelaskan proses fotosintesis secara singkat!|ESSAY</div>
+<hr class="divider">
+<h2>📝 CONTOH LENGKAP (SIAP DIIMPORT)</h2>
+<span class="code-line">1. Ibu kota Indonesia adalah?|A.Bandung|B.Jakarta|C.Surabaya|D.Medan|B</span>
+<span class="code-line alt">2. Manakah bilangan ganjil? (pilih semua)|A.1|B.2|C.3|D.4|E.5|ACE</span>
+<span class="code-line">3. Air mendidih pada suhu 100 derajat Celsius.|BENAR</span>
+<span class="code-line alt">4. Sebutkan tiga sumber daya alam yang dapat diperbarui!|ESSAY</span>
+<span class="code-line">5. Organ yang memompa darah ke seluruh tubuh?|A.Paru-paru|B.Hati|C.Jantung|D.Ginjal|C</span>
+<span class="code-line alt">6. Planet terbesar di tata surya?|A.Bumi|B.Mars|C.Jupiter|D.Saturnus|C</span>
+<span class="code-line">7. Mana hewan mamalia? (pilih semua)|A.Paus|B.Buaya|C.Lumba-lumba|D.Hiu|AC</span>
+<span class="code-line alt">8. Indonesia merdeka 17 Agustus 1945.|BENAR</span>
+<span class="code-line">9. Jelaskan perbedaan metamorfosis sempurna dan tidak sempurna!|ESSAY</span>
+<span class="code-line alt">10. 1 km = berapa meter?|A.10|B.100|C.1000|D.10000|C</span>
+<hr class="divider">
+<h2>⚠️ ATURAN PENTING</h2><table><tr><th>No</th><th>Aturan</th></tr><tr><td>1</td><td>Pemisah elemen pakai | (pipe/garis tegak)</td></tr><tr><td>2</td><td>Setiap soal dalam SATU BARIS — jangan ganti baris di tengah soal</td></tr><tr><td>3</td><td>Pilihan PG wajib diawali A., B., C., D., E. (titik wajib)</td></tr><tr><td>4</td><td>Jawaban PG: huruf kapital A / B / C / D / E</td></tr><tr><td>5</td><td>Jawaban MCMA: gabungan huruf kapital tanpa spasi (AB, ACE, dll)</td></tr><tr><td>6</td><td>Jawaban TF: BENAR atau SALAH (kapital semua)</td></tr><tr><td>7</td><td>Essay cukup diakhiri |ESSAY — tidak perlu kunci jawaban</td></tr><tr><td>8</td><td>Hindari karakter | di dalam teks soal — ganti dengan "atau"</td></tr><tr><td>9</td><td>Aktifkan "Izinkan Soal Essay" di pengaturan ujian untuk soal essay</td></tr></table>
+<p class="footer">AbsensiKu — Sistem Absensi Digital | Template Soal CBT v1.0 | ${now}</p>
+</body></html>`;
+  const blob = new Blob(['\ufeff'+html],{type:'application/msword;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='Template_Soal_CBT_AbsensiKu.doc'; a.click();
+  URL.revokeObjectURL(url);
+}
 const {useState,useEffect,useRef,useCallback,createElement:h,Fragment} = React;
 
 // ================================================================
@@ -4013,6 +4049,7 @@ function CbtQuestionsModal({exam,onClose}) {
         ),
         h('div',{style:{display:'flex',gap:'8px'}},
           h('button',{onClick:()=>setShowImport(!showImport),style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-secondary)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📥 Import'),
+h('button',{onClick:downloadTemplateSoalCBT,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid rgba(0,255,136,.3)',background:'rgba(0,255,136,.08)',color:'#00ff88',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'📄 Template'),
           h('button',{onClick:newQ,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--accent-dim)',background:'var(--accent-bg)',color:'var(--accent)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'+Soal'),
           h('button',{onClick:onClose,style:{padding:'7px 12px',borderRadius:'8px',border:'1px solid var(--border)',background:'transparent',color:'var(--text-muted)',cursor:'pointer',fontFamily:MONO,fontSize:'10px'}},'✕ Tutup')
         )
@@ -5385,7 +5422,7 @@ function GuruCBT({teacher, students, isDemo,onBack}) {
         h('h2',{style:{fontFamily:ORB,fontSize:'16px',color:'#a855f7',letterSpacing:'.08em'}},'📝 CBT — '+teacher.mapel),
         h('p',{style:{fontSize:'10px',fontFamily:MONO,color:'var(--text-muted)',marginTop:'2px'}},'Buat & kelola ujian mata pelajaran Anda')
       ),
-      !isDemo&&h('button',{onClick:()=>setEditExam({id:genId(),title:'',description:'',kelas:kelasList[0]||'',mapel:teacher.mapel,duration_minutes:60,start_time:'',end_time:'',shuffle_questions:true,shuffle_answers:true,allow_essay:false,status:'draft',created_by:teacher.name}),
+      h('button',{onClick:downloadTemplateSoalCBT,style:{padding:'10px 14px',borderRadius:'12px',background:'rgba(0,255,136,.08)',border:'1px solid rgba(0,255,136,.3)',color:'#00ff88',cursor:'pointer',fontFamily:MONO,fontSize:'11px'}},'📄 Template Soal'),!isDemo&&h('button',{onClick:()=>setEditExam({id:genId(),title:'',description:'',kelas:kelasList[0]||'',mapel:teacher.mapel,duration_minutes:60,start_time:'',end_time:'',shuffle_questions:true,shuffle_answers:true,allow_essay:false,status:'draft',created_by:teacher.name}),
         style:{padding:'10px 18px',borderRadius:'12px',background:'rgba(168,85,247,.1)',border:'1px solid rgba(168,85,247,.3)',color:'#a855f7',cursor:'pointer',fontFamily:MONO,fontSize:'11px'}},
         '+ Buat Ujian')
     ),
