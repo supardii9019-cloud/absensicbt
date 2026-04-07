@@ -5297,10 +5297,18 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
         ||(e.ctrlKey&&e.shiftKey&&['i','j','c','k'].includes(e.key.toLowerCase()))
         ||(e.metaKey&&e.altKey&&['i','j'].includes(e.key.toLowerCase()));
 
-      const isWarnOnly=
-        (e.ctrlKey||e.metaKey)&&['c','v','x','a','s','p','u','f','r'].includes(e.key.toLowerCase())
-        ||e.key==='PrintScreen'
-        ||(e.ctrlKey&&e.key==='r');
+      // Print Screen jadi violation tersendiri
+if(e.key==='PrintScreen'){
+  e.preventDefault();
+  addViolation('Tombol Print Screen ditekan');
+  setShowWarning('🚫 Screenshot dilarang selama ujian!');
+  setTimeout(()=>setShowWarning(null),3000);
+  return false;
+}
+
+const isWarnOnly=
+  (e.ctrlKey||e.metaKey)&&['c','v','x','a','s','p','u','f','r'].includes(e.key.toLowerCase())
+  ||(e.ctrlKey&&e.key==='r');
 
       if(isDevtool){
         e.preventDefault();
