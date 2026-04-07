@@ -5247,25 +5247,32 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
   // ── Anti-nyontek: paksa fullscreen (setelah addViolation) ─────────
   useEffect(()=>{
     if(submitted||loading||!tokenPassed) return;
-    const tryFS=()=>{if(document.documentElement.requestFullscreen)document.documentElement.requestFullscreen().catch(()=>{});};
+    const tryFS=()=>{
+      if(document.documentElement.requestFullscreen)
+        document.documentElement.requestFullscreen().catch(()=>{});
+    };
     tryFS();
     const onFsChange=()=>{
-      // Jangan hitung violation jika app sedang ditutup
+      // Hanya warning + paksa balik — BUKAN violation
+      // HP dikunci, notifikasi masuk, dll tidak dihukum
       if(!document.fullscreenElement&&!sessionRef.current?._appClosing){
-        addViolation('Keluar dari fullscreen');
-        setShowWarning('⚠️ Keluar fullscreen! Kembali...');
-        setTimeout(()=>{tryFS();setShowWarning(null);},2000);
+        setShowWarning('⚠️ Layar keluar fullscreen, kembali dalam 3 detik...');
+        setTimeout(()=>{tryFS();setShowWarning(null);},3000);
       }
     };
     document.addEventListener('fullscreenchange',onFsChange);
-    return()=>{document.removeEventListener('fullscreenchange',onFsChange);if(document.exitFullscreen&&document.fullscreenElement)document.exitFullscreen().catch(()=>{});};
-  },[submitted,loading,isDemo,tokenPassed,addViolation]);
+    return()=>{
+      document.removeEventListener('fullscreenchange',onFsChange);
+      if(document.exitFullscreen&&document.fullscreenElement)
+        document.exitFullscreen().catch(()=>{});
+    };
+  },[submitted,loading,isDemo,tokenPassed]);
 
   // ── Anti-nyontek: copy/paste/shortcut/devtools/tab ──────────────
   useEffect(()=>{
     if(submitted||loading||!tokenPassed) return;
 
-    // Klik kanan: hanya peringatan, TIDAK menambah violation
+    // Klik kanan — hanya peringatan, bukan violation
     const noCtx=e=>{
       e.preventDefault();
       setShowWarning('⚠️ Klik kanan dinonaktifkan selama ujian!');
@@ -5273,73 +5280,98 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       return false;
     };
 
-    // Copy/cut/paste: violation
+    // Copy/cut/paste — violation karena jelas niat menyontek
     const noCopy=e=>{
       e.preventDefault();
-      setShowWarning('⚠️ Copy/Paste tidak diizinkan selama ujian!');
-      setTimeout(()=>setShowWarning(null),2500);
       addViolation('Copy/Paste terdeteksi');
+      setShowWarning('⚠️ Copy/Paste tidak diizinkan selama ujian!');
+      setTimeout(()=>setShowWarning(null),3000);
       return false;
     };
 
-    // Shortcut keyboard terlarang: violation
+    // Keyboard — hanya shortcut DevTools yang jadi violation
+    // Shortcut biasa (Ctrl+C dll) hanya peringatan
     const noKey=e=>{
-      const bad=(e.ctrlKey||e.metaKey)&&['c','v','x','a','u','s','p','f','i'].includes(e.key.toLowerCase())
-        ||e.key==='F12'
+      const isDevtool=
+        e.key==='F12'
         ||(e.ctrlKey&&e.shiftKey&&['i','j','c','k'].includes(e.key.toLowerCase()))
+        ||(e.metaKey&&e.altKey&&['i','j'].includes(e.key.toLowerCase()));
+
+      const isWarnOnly=
+        (e.ctrlKey||e.metaKey)&&['c','v','x','a','s','p','u','f','r'].includes(e.key.toLowerCase())
         ||e.key==='PrintScreen'
-        ||e.key==='F5'||(e.ctrlKey&&e.key==='r');
-      if(bad){
+        ||(e.ctrlKey&&e.key==='r');
+
+      if(isDevtool){
+        e.preventDefault();
+        addViolation('Shortcut DevTools: '+e.key);
+        setShowWarning('🚫 DevTools dilarang selama ujian!');
+        setTimeout(()=>setShowWarning(null),3000);
+        return false;
+      }
+      if(isWarnOnly){
         e.preventDefault();
         const label=(e.ctrlKey?'Ctrl+':e.metaKey?'Cmd+':'')+(e.shiftKey?'Shift+':'')+e.key;
-        addViolation('Shortcut terlarang: '+label);
-        setShowWarning('⚠️ Shortcut ['+label+'] dilarang!');
-        setTimeout(()=>setShowWarning(null),2500);
+        setShowWarning('⚠️ Shortcut ['+label+'] dinonaktifkan');
+        setTimeout(()=>setShowWarning(null),2000);
         return false;
       }
     };
 
-    // Blokir seleksi teks & drag (tidak violation, hanya blokir)
     const noSel=e=>{e.preventDefault();return false;};
     const noDrag=e=>{e.preventDefault();return false;};
 
-    // Flag: app sedang ditutup (pagehide) — jangan hitung sebagai violation
+    // Flag: app benar-benar ditutup
     let appClosing=false;
     window.addEventListener('pagehide',()=>{appClosing=true;},{once:true});
 
-    // Pindah tab / minimize: violation (debounce 1 detik agar tidak double-trigger)
+    // Pindah tab / minimize
+    // Logika: 2x pertama hanya warning, ke-3 dst baru violation
+    // Delay 6 detik agar notifikasi masuk / HP dikunci sebentar tidak kena
     let visTimer=null;
+    let visWarnCount=0;
     const onVis=()=>{
       if(document.hidden){
         clearTimeout(visTimer);
         visTimer=setTimeout(()=>{
-          if(appClosing||sessionRef.current?._appClosing) return; // app ditutup
-          addViolation('Pindah tab / minimize');
-          setShowWarning('⚠️ Terdeteksi keluar dari halaman ujian!');
-          setTimeout(()=>setShowWarning(null),3500);
-        },1500); // naikkan jadi 1.5 detik — beri waktu pagehide jalan duluan
+          if(appClosing||sessionRef.current?._appClosing) return;
+          visWarnCount++;
+          if(visWarnCount<=2){
+            setShowWarning('⚠️ Jangan tinggalkan halaman ujian! (Peringatan '+visWarnCount+'/2)');
+            setTimeout(()=>setShowWarning(null),4000);
+          } else {
+            addViolation('Berulang pindah tab/minimize (ke-'+visWarnCount+')');
+            setShowWarning('🚫 Pelanggaran! Berkali-kali meninggalkan halaman ujian.');
+            setTimeout(()=>setShowWarning(null),4000);
+          }
+        },6000); // 6 detik toleransi — cukup untuk dismiss notifikasi
       } else {
+        // Langsung kembali → batal timer, tidak dihitung
         clearTimeout(visTimer);
       }
     };
 
-    // DevTools: peringatan dulu, violation hanya setelah 5 detik tetap terbuka
+    // DevTools via window size
+    // Threshold 300px agar split screen & sidebar browser tidak kena
+    // Delay 15 detik sebelum violation agar ada waktu menutup
     let devOpen=false;
     let devTimer=null;
     const devCheck=setInterval(()=>{
-      const opened=window.outerWidth-window.innerWidth>160||window.outerHeight-window.innerHeight>160;
+      const opened=
+        window.outerWidth-window.innerWidth>300
+        ||window.outerHeight-window.innerHeight>300;
       if(opened&&!devOpen){
         devOpen=true;
-        setShowWarning('⚠️ Developer Tools terdeteksi! Tutup segera.');
+        setShowWarning('⚠️ Developer Tools terdeteksi! Tutup dalam 15 detik.');
         devTimer=setTimeout(()=>{
-          if(devOpen) addViolation('DevTools dibiarkan terbuka');
-        },5000);
+          if(devOpen) addViolation('DevTools dibiarkan terbuka >15 detik');
+        },15000);
       } else if(!opened&&devOpen){
         devOpen=false;
         clearTimeout(devTimer);
         setShowWarning(null);
       }
-    },2000);
+    },3000);
 
     document.addEventListener('contextmenu',noCtx);
     document.addEventListener('copy',noCopy);
