@@ -5291,6 +5291,7 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
 
     // Keyboard — hanya shortcut DevTools yang jadi violation
     // Shortcut biasa (Ctrl+C dll) hanya peringatan
+    let printScreenCount=0;
     const noKey=e=>{
       const isDevtool=
         e.key==='F12'
@@ -5300,9 +5301,16 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
       // Print Screen jadi violation tersendiri
 if(e.key==='PrintScreen'){
   e.preventDefault();
-  addViolation('Tombol Print Screen ditekan');
-  setShowWarning('🚫 Screenshot dilarang selama ujian!');
-  setTimeout(()=>setShowWarning(null),3000);
+  printScreenCount++;
+  if(printScreenCount>=2){
+    addViolation('Print Screen ke-'+printScreenCount+' — DISKUALIFIKASI');
+    setShowWarning('🚫 Screenshot 2x terdeteksi! Ujian dihentikan...');
+    setTimeout(()=>handleSubmit(true,true),2000);
+  } else {
+    addViolation('Print Screen ke-'+printScreenCount+' (peringatan)');
+    setShowWarning('⚠️ Screenshot terdeteksi! ('+printScreenCount+'/2) — Sekali lagi = DISKUALIFIKASI');
+    setTimeout(()=>setShowWarning(null),4000);
+  }
   return false;
 }
 
