@@ -5293,7 +5293,21 @@ function CbtExamRunner({exam,student,isDemo,onFinish}) {
     // Shortcut biasa (Ctrl+C dll) hanya peringatan
     let printScreenCount=0;
     const noKey=e=>{
-      const isDevtool=
+      // Di dalam noKey handler, tambahkan di baris pertama:
+if(e.key === 'PrintScreen' || e.key === 'Meta' || (e.ctrlKey && e.key === 'p')) {
+  e.preventDefault();
+  addViolation('Screenshot terdeteksi: ' + e.key);
+  setShowWarning('🚫 Screenshot dilarang! Pelanggaran tercatat.');
+  // Sembunyikan konten soal sesaat
+  document.getElementById('cbt-content') && 
+    (document.getElementById('cbt-content').style.visibility = 'hidden');
+  setTimeout(() => {
+    document.getElementById('cbt-content') && 
+      (document.getElementById('cbt-content').style.visibility = 'visible');
+    setShowWarning(null);
+  }, 3000);
+  return false;
+}const isDevtool=
         e.key==='F12'
         ||(e.ctrlKey&&e.shiftKey&&['i','j','c','k'].includes(e.key.toLowerCase()))
         ||(e.metaKey&&e.altKey&&['i','j'].includes(e.key.toLowerCase()));
