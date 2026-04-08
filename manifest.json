@@ -2,7 +2,7 @@
   "name": "AbsensiKu — Sistem Absensi Digital",
   "short_name": "AbsensiKu",
   "description": "Sistem Absensi Siswa Digital berbasis lokasi dan kamera",
-  "start_url": "absensicbt/index.html",
+  "start_url": "absensicbt/splash.html",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "background_color": "#0a0a0f",
