@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>AbsensiKu — Install</title>
+<meta name="theme-color" content="#0a0a0f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --cyan:#00f0ff;
+  --purple:#a855f7;
+  --green:#00ff88;
+  --bg:#0a0a0f;
+  --panel:rgba(15,15,26,.85);
+  --border:rgba(0,240,255,.12);
+  --border-s:rgba(0,240,255,.25);
+  --text:#fff;
+  --muted:rgba(255,255,255,.55);
+  --dim:rgba(255,255,255,.25);
+}
+html,body{height:100%;overflow:hidden}
+body{
+  background:var(--bg);
+  font-family:'JetBrains Mono',monospace;
+  color:var(--text);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+}
+
+/* ── Canvas bg ── */
+#bg-canvas{
+  position:fixed;inset:0;
+  pointer-events:none;z-index:0;
+}
+
+/* ── Grid lines ── */
+.grid-overlay{
+  position:fixed;inset:0;z-index:1;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(0,240,255,.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,240,255,.03) 1px, transparent 1px);
+  background-size:48px 48px;
+}
+
+/* ── Glow orbs ── */
+.orb{
+  position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;
+}
+.orb-1{width:500px;height:500px;background:rgba(0,240,255,.06);top:-100px;left:-100px;z-index:0;}
+.orb-2{width:400px;height:400px;background:rgba(168,85,247,.05);bottom:-100px;right:-80px;z-index:0;}
+.orb-3{width:250px;height:250px;background:rgba(0,255,136,.04);top:50%;left:50%;transform:translate(-50%,-50%);z-index:0;}
+
+/* ── Scan line ── */
+.scan-line{
+  position:fixed;left:0;right:0;height:2px;z-index:2;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(0,240,255,.4),rgba(168,85,247,.4),transparent);
+  animation:scan 4s linear infinite;
+}
+@keyframes scan{0%{top:-2px;opacity:0}5%{opacity:1}90%{opacity:.5}100%{top:100vh;opacity:0}}
+
+/* ── Main card ── */
+.card{
+  position:relative;z-index:10;
+  width:min(400px, calc(100vw - 32px));
+  padding:36px 28px 32px;
+  background:var(--panel);
+  border:1px solid var(--border-s);
+  border-radius:28px;
+  backdrop-filter:blur(24px);
+  box-shadow:
+    0 0 0 1px rgba(0,240,255,.05),
+    0 32px 80px rgba(0,0,0,.6),
+    0 0 120px rgba(0,240,255,.04);
+  animation:rise .7s cubic-bezier(.16,1,.3,1) forwards;
+  opacity:0;
+  transform:translateY(24px);
+}
+@keyframes rise{to{opacity:1;transform:translateY(0)}}
+
+/* ── Corner decorations ── */
+.card::before,.card::after{
+  content:'';position:absolute;width:20px;height:20px;
+  border-color:var(--cyan);border-style:solid;
+}
+.card::before{top:12px;left:12px;border-width:2px 0 0 2px;border-radius:4px 0 0 0;}
+.card::after{bottom:12px;right:12px;border-width:0 2px 2px 0;border-radius:0 0 4px 0;}
+
+/* ── Logo block ── */
+.logo-wrap{
+  display:flex;align-items:center;gap:16px;margin-bottom:28px;
+}
+.logo-icon{
+  width:60px;height:60px;border-radius:16px;
+  background:linear-gradient(135deg,rgba(0,240,255,.12),rgba(168,85,247,.12));
+  border:1px solid var(--border-s);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;flex-shrink:0;
+  animation:pulse-icon 3s ease-in-out infinite;
+}
+@keyframes pulse-icon{
+  0%,100%{box-shadow:0 0 0 rgba(0,240,255,0)}
+  50%{box-shadow:0 0 24px rgba(0,240,255,.2)}
+}
+.logo-text h1{
+  font-family:'Orbitron',monospace;
+  font-size:22px;font-weight:900;
+  letter-spacing:.1em;line-height:1;
+}
+.logo-text h1 span{color:var(--purple)}
+.logo-text p{
+  font-size:9px;letter-spacing:.3em;
+  color:rgba(0,240,255,.55);margin-top:5px;
+  text-transform:uppercase;
+}
+
+/* ── Status bar ── */
+.status-bar{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 12px;border-radius:8px;
+  background:rgba(0,255,136,.06);
+  border:1px solid rgba(0,255,136,.2);
+  margin-bottom:24px;
+  font-size:9px;letter-spacing:.15em;color:var(--green);
+}
+.status-dot{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--green);flex-shrink:0;
+  animation:blink 1.5s ease-in-out infinite;
+}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* ── Features ── */
+.features{
+  display:flex;flex-direction:column;gap:10px;
+  margin-bottom:28px;
+}
+.feature-item{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 14px;border-radius:12px;
+  background:rgba(255,255,255,.025);
+  border:1px solid rgba(255,255,255,.06);
+  animation:fade-in .5s ease forwards;
+  opacity:0;
+}
+.feature-item:nth-child(1){animation-delay:.15s}
+.feature-item:nth-child(2){animation-delay:.25s}
+.feature-item:nth-child(3){animation-delay:.35s}
+@keyframes fade-in{to{opacity:1}}
+.fi-icon{
+  width:34px;height:34px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;
+}
+.fi-cyan{background:rgba(0,240,255,.1);border:1px solid rgba(0,240,255,.2)}
+.fi-purple{background:rgba(168,85,247,.1);border:1px solid rgba(168,85,247,.2)}
+.fi-green{background:rgba(0,255,136,.1);border:1px solid rgba(0,255,136,.2)}
+.feature-item p{font-size:11px;color:rgba(255,255,255,.7);line-height:1.4}
+.feature-item p strong{color:#fff;display:block;font-size:12px;margin-bottom:1px}
+
+/* ── Buttons ── */
+.btn-install{
+  width:100%;padding:15px 20px;border-radius:14px;
+  background:linear-gradient(135deg,rgba(0,240,255,.15),rgba(168,85,247,.12));
+  border:1px solid var(--border-s);
+  color:var(--cyan);
+  font-family:'Orbitron',monospace;font-size:12px;font-weight:700;
+  letter-spacing:.18em;text-transform:uppercase;
+  cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:10px;
+  transition:all .2s;position:relative;overflow:hidden;
+  margin-bottom:10px;
+}
+.btn-install::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(0,240,255,.08),transparent);
+  opacity:0;transition:opacity .2s;
+}
+.btn-install:hover::before{opacity:1}
+.btn-install:hover{border-color:rgba(0,240,255,.4);transform:translateY(-1px);box-shadow:0 8px 32px rgba(0,240,255,.12)}
+.btn-install:active{transform:scale(.98)}
+.btn-install.hidden{display:none}
+.btn-install.success{
+  background:linear-gradient(135deg,rgba(0,255,136,.15),rgba(0,240,255,.08));
+  border-color:rgba(0,255,136,.35);color:var(--green);
+}
+
+.btn-enter{
+  width:100%;padding:12px 20px;border-radius:12px;
+  background:transparent;
+  border:1px solid rgba(255,255,255,.08);
+  color:rgba(255,255,255,.4);
+  font-family:'JetBrains Mono',monospace;font-size:11px;
+  letter-spacing:.08em;cursor:pointer;
+  transition:all .2s;
+}
+.btn-enter:hover{
+  border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.6);
+  background:rgba(255,255,255,.03);
+}
+
+/* ── Install note ── */
+.install-note{
+  text-align:center;font-size:9px;letter-spacing:.1em;
+  color:var(--dim);margin-top:12px;line-height:1.6;
+}
+
+/* ── iOS instructions ── */
+.ios-hint{
+  margin-top:12px;padding:12px 14px;border-radius:12px;
+  background:rgba(168,85,247,.07);border:1px solid rgba(168,85,247,.2);
+  font-size:10px;line-height:1.6;color:rgba(168,85,247,.8);
+  display:none;
+}
+.ios-hint.show{display:block}
+
+/* ── Loading spinner ── */
+.spinner{
+  width:16px;height:16px;border-radius:50%;
+  border:2px solid rgba(0,240,255,.2);
+  border-top-color:var(--cyan);
+  animation:spin .6s linear infinite;display:none;
+}
+.spinner.show{display:block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Toast ── */
+.toast{
+  position:fixed;bottom:32px;left:50%;
+  transform:translateX(-50%) translateY(20px);
+  background:rgba(15,15,26,.95);
+  border:1px solid var(--border-s);
+  border-radius:12px;padding:10px 18px;
+  font-size:11px;color:var(--green);letter-spacing:.08em;
+  white-space:nowrap;opacity:0;
+  transition:all .3s;pointer-events:none;z-index:100;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── Already installed banner ── */
+.installed-banner{
+  display:none;
+  text-align:center;padding:16px;
+  background:rgba(0,255,136,.05);
+  border:1px solid rgba(0,255,136,.2);
+  border-radius:16px;margin-bottom:16px;
+}
+.installed-banner.show{display:block}
+.installed-banner p{font-size:11px;color:var(--green);line-height:1.5}
+</style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+<div class="grid-overlay"></div>
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+<div class="orb orb-3"></div>
+<div class="scan-line"></div>
+
+<div class="card">
+
+  <!-- Logo -->
+  <div class="logo-wrap">
+    <div class="logo-icon">📋</div>
+    <div class="logo-text">
+      <h1>ABSENSI<span>KU</span></h1>
+      <p>Sistem Absensi Siswa Digital</p>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="status-dot"></div>
+    <span>v1.0 — SIAP DIGUNAKAN</span>
+  </div>
+
+  <!-- Already installed -->
+  <div class="installed-banner" id="installed-banner">
+    <p>✅ Aplikasi sudah terinstall di perangkat ini</p>
+  </div>
+
+  <!-- Features -->
+  <div class="features">
+    <div class="feature-item">
+      <div class="fi-icon fi-cyan">📍</div>
+      <p><strong>Absen Berbasis Lokasi</strong>Verifikasi GPS otomatis dari area sekolah</p>
+    </div>
+    <div class="feature-item">
+      <div class="fi-icon fi-purple">📷</div>
+      <p><strong>Foto Selfie Otomatis</strong>Bukti kehadiran tersimpan real-time</p>
+    </div>
+    <div class="feature-item">
+      <div class="fi-icon fi-green">📊</div>
+      <p><strong>Rekap & Laporan Lengkap</strong>Dashboard admin, guru, dan siswa</p>
+    </div>
+  </div>
+
+  <!-- Install button -->
+  <button class="btn-install" id="btn-install" onclick="handleInstall()">
+    <div class="spinner" id="install-spinner"></div>
+    <span id="btn-install-text">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block;vertical-align:middle;margin-right:6px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Install Aplikasi
+    </span>
+  </button>
+
+  <!-- iOS hint -->
+  <div class="ios-hint" id="ios-hint">
+    Di Safari: ketuk tombol <strong>Bagikan</strong> (□↑) lalu pilih <strong>"Tambah ke Layar Utama"</strong>
+  </div>
+
+  <!-- Enter without install -->
+  <button class="btn-enter" id="btn-enter" onclick="goToApp()">
+    Buka tanpa install
+  </button>
+
+  <p class="install-note" id="install-note">
+    Install untuk akses offline &amp; pengalaman terbaik<br>
+    Tidak perlu Play Store atau App Store
+  </p>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Canvas particle background ──────────────────────────────
+(function(){
+  var cv=document.getElementById('bg-canvas');
+  var ctx=cv.getContext('2d');
+  var W,H,particles=[];
+  function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight;}
+  resize();window.addEventListener('resize',resize);
+  for(var i=0;i<40;i++){
+    particles.push({
+      x:Math.random()*W,y:Math.random()*H,
+      vx:(Math.random()-.5)*.3,vy:(Math.random()-.5)*.3,
+      r:Math.random()*1.8+.4,
+      op:Math.random()*.3+.05,
+      color:Math.random()>.5?'0,240,255':'168,85,247'
+    });
+  }
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    particles.forEach(function(p){
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0)p.x=W;if(p.x>W)p.x=0;
+      if(p.y<0)p.y=H;if(p.y>H)p.y=0;
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle='rgba('+p.color+','+p.op+')';
+      ctx.fill();
+    });
+    // Draw connecting lines
+    for(var i=0;i<particles.length;i++){
+      for(var j=i+1;j<particles.length;j++){
+        var dx=particles[i].x-particles[j].x;
+        var dy=particles[i].y-particles[j].y;
+        var dist=Math.sqrt(dx*dx+dy*dy);
+        if(dist<100){
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x,particles[i].y);
+          ctx.lineTo(particles[j].x,particles[j].y);
+          ctx.strokeStyle='rgba(0,240,255,'+(0.04*(1-dist/100))+')';
+          ctx.lineWidth=.5;
+          ctx.stroke();
+        }
+      }
+    }
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── PWA Logic ────────────────────────────────────────────────
+var deferredPrompt = null;
+var isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+var isStandalone = window.matchMedia('(display-mode: standalone)').matches
+  || window.navigator.standalone === true;
+
+function showToast(msg, duration) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); }, duration || 2500);
+}
+
+function goToApp() {
+  showToast('Membuka AbsensiKu...');
+  setTimeout(function(){ window.location.href = 'index.html'; }, 600);
+}
+
+async function handleInstall() {
+  var btn = document.getElementById('btn-install');
+  var spinner = document.getElementById('install-spinner');
+  var txt = document.getElementById('btn-install-text');
+
+  if (isIOS) {
+    document.getElementById('ios-hint').classList.add('show');
+    return;
+  }
+
+  if (!deferredPrompt) {
+    // Tidak ada prompt — langsung masuk app
+    goToApp();
+    return;
+  }
+
+  // Tampilkan spinner
+  spinner.classList.add('show');
+  txt.style.display = 'none';
+  btn.style.opacity = '.7';
+
+  deferredPrompt.prompt();
+  var result = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+
+  spinner.classList.remove('show');
+  txt.style.display = '';
+  btn.style.opacity = '1';
+
+  if (result.outcome === 'accepted') {
+    btn.classList.add('success');
+    document.getElementById('btn-install-text').innerHTML = '✅ Berhasil Diinstall!';
+    showToast('AbsensiKu berhasil diinstall!', 3000);
+    setTimeout(goToApp, 2000);
+  } else {
+    showToast('Install dibatalkan. Kamu bisa install nanti.');
+    setTimeout(goToApp, 1500);
+  }
+}
+
+// ── Event listeners ──────────────────────────────────────────
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('install-note').textContent = 'Install sekali, pakai selamanya. Tanpa Play Store.';
+});
+
+window.addEventListener('appinstalled', function() {
+  showToast('AbsensiKu terinstall! Buka dari layar utama.', 3500);
+  setTimeout(goToApp, 2000);
+});
+
+// ── Init state check ──────────────────────────────────────────
+(function() {
+  // Jika sudah standalone → langsung masuk app
+  if (isStandalone) {
+    window.location.replace('index.html');
+    return;
+  }
+
+  // iOS: sembunyikan tombol install default, tampilkan hint
+  if (isIOS) {
+    document.getElementById('btn-install-text').innerHTML =
+      '<span style="font-size:18px;margin-right:8px">□↑</span> Tambah ke Layar Utama';
+    document.getElementById('install-note').textContent =
+      'Di Safari: ketuk tombol Bagikan lalu "Tambah ke Layar Utama"';
+  }
+
+  // Kalau sudah pernah install (heuristic: cek jika PWA pernah di-appinstalled)
+  try {
+    if (localStorage.getItem('absensiku_installed') === '1') {
+      document.getElementById('installed-banner').classList.add('show');
+      document.getElementById('btn-install').classList.add('hidden');
+      document.getElementById('install-note').textContent = '';
+    }
+  } catch(e) {}
+})();
+
+// Simpan flag saat install berhasil
+window.addEventListener('appinstalled', function() {
+  try { localStorage.setItem('absensiku_installed', '1'); } catch(e) {}
+});
+</script>
+</body>
+</html>
