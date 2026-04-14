@@ -1608,13 +1608,7 @@ function NotifBell({targetId}) {
   const reload = useCallback(async()=>{
     try{const data=await DB.getNotifications(targetId);setNotifs(data||[]);}catch(e){}
   },[targetId]);
-  useEffect(()=>{
-  reload();
-  const iv=setInterval(()=>{
-    if(!document.hidden) reload();
-  }, 60000); // 60 detik, bukan 5 detik
-  return()=>clearInterval(iv);
-},[reload]);
+ useEffect(()=>{reload();const iv=setInterval(reload,5000);return()=>clearInterval(iv);},[reload]);
   const unread=notifs.filter(n=>!n.read).length;
   const markRead=async()=>{await DB.markNotificationsRead(targetId);reload();};
   const clearAll=async()=>{await DB.clearNotifications(targetId);setNotifs([]);};
