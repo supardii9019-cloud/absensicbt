@@ -735,32 +735,14 @@ function genDevice() {
 // ================================================================
 const DB = {
   async getSettings() {
-   async getSettings() {
-    try {
-      const cached = sessionStorage.getItem('_settings_cache');
-      const cacheTime = sessionStorage.getItem('_settings_time');
-      if(cached && cacheTime && (Date.now() - +cacheTime) < 300000) {
-        return JSON.parse(cached);
-      }
-    } catch(e){}
     const {data} = await sb.from('school_settings').eq('id','1').get();
     if(!data||!data[0]) return {schoolName:'SMA Negeri 1 Jakarta',schoolStart:'07:00',schoolEnd:'15:00',deviceLock:true,locationName:'SMA Negeri 1',locationLat:-6.2088,locationLng:106.8456,locationRadius:200};
     const r=data[0];
-    const result = {schoolName:r.school_name,schoolStart:(r.school_start||'07:00').slice(0,5),schoolEnd:(r.school_end||'15:00').slice(0,5),deviceLock:r.device_lock,locationName:r.location_name,locationLat:r.location_lat,locationLng:r.location_lng,locationRadius:r.location_radius,fonnteToken:r.fonnte_token||'',fonnteDevice:r.fonnte_device||'',schoolLogo:r.logo||''};
-    try {
-      sessionStorage.setItem('_settings_cache', JSON.stringify(result));
-      sessionStorage.setItem('_settings_time', Date.now().toString());
-    } catch(e){}
-    return result;
-},
+    return {schoolName:r.school_name,schoolStart:(r.school_start||'07:00').slice(0,5),schoolEnd:(r.school_end||'15:00').slice(0,5),deviceLock:r.device_lock,locationName:r.location_name,locationLat:r.location_lat,locationLng:r.location_lng,locationRadius:r.location_radius,fonnteToken:r.fonnte_token||'',fonnteDevice:r.fonnte_device||'',schoolLogo:r.logo||''};
+  },
   async saveSettings(s) {
     await sb.from('school_settings').eq('id','1').update({school_name:s.schoolName,school_start:s.schoolStart,school_end:s.schoolEnd,device_lock:s.deviceLock,location_name:s.locationName,location_lat:s.locationLat,location_lng:s.locationLng,location_radius:s.locationRadius,fonnte_token:s.fonnteToken||'',fonnte_device:s.fonnteDevice||'',logo:s.schoolLogo||null,updated_at:new Date().toISOString()});
-    // Hapus cache agar semua siswa dapat settings terbaru
-    try {
-      sessionStorage.removeItem('_settings_cache');
-      sessionStorage.removeItem('_settings_time');
-    } catch(e){}
-},
+  },
   async getStudents() {
     const {data} = await sb.from('students').order('created_at',{ascending:true}).get();
     return (data||[]).map(r=>({id:r.id,name:r.name,studentCode:r.student_code,password:r.password,kelas:r.kelas,nis:r.nis,phone:r.phone,active:r.active,deviceId:r.device_id,deviceInfo:r.device_info,createdAt:r.created_at}));
@@ -776,32 +758,10 @@ const DB = {
   async resetStudentDevice(id) {
     return sb.from('students').eq('id',id).update({device_id:null,device_info:null});
   },
- // CARI baris ini (sekitar bagian DB object):
-async getRecords() {
+  async getRecords() {
     const {data} = await sb.from('attendance_records').order('date',{ascending:false}).order('created_at',{ascending:false}).get();
-    return (data||[]).map(r=>({...}));
-},
-
-// TAMBAH fungsi baru SETELAH getRecords:
-async getRecordsByStudent(studentId) {
-  const {data} = await sb.from('attendance_records')
-    .eq('student_id', studentId)
-    .order('date', {ascending: false})
-    .limit(90)
-    .get();
-  return (data||[]).map(r=>({
-    id:r.id, studentId:r.student_id, studentName:r.student_name,
-    studentCode:r.student_code, date:r.date,
-    clockIn:r.clock_in?r.clock_in.slice(0,5):null,
-    clockInStatus:r.clock_in_status||null,
-    clockOut:r.clock_out?r.clock_out.slice(0,5):null,
-    clockOutStatus:r.clock_out_status||null,
-    clockInPhoto:r.clock_in_photo, clockOutPhoto:r.clock_out_photo,
-    clockInLocation:r.clock_in_location, clockOutLocation:r.clock_out_location,
-    clockInDistance:r.clock_in_distance, clockOutDistance:r.clock_out_distance,
-    deviceId:r.device_id
-  }));
-},
+    return (data||[]).map(r=>({id:r.id,studentId:r.student_id,studentName:r.student_name,studentCode:r.student_code,date:r.date,clockIn:r.clock_in?r.clock_in.slice(0,5):null,clockInStatus:r.clock_in_status||null,clockOut:r.clock_out?r.clock_out.slice(0,5):null,clockOutStatus:r.clock_out_status||null,clockInPhoto:r.clock_in_photo,clockOutPhoto:r.clock_out_photo,clockInLocation:r.clock_in_location,clockOutLocation:r.clock_out_location,clockInDistance:r.clock_in_distance,clockOutDistance:r.clock_out_distance,deviceId:r.device_id}));
+  },
   async upsertRecord(rec) {
     const row = {id:rec.id,student_id:rec.studentId,student_name:rec.studentName,student_code:rec.studentCode,date:rec.date,clock_in:rec.clockIn||null,clock_in_status:rec.clockInStatus||null,clock_out:rec.clockOut||null,clock_out_status:rec.clockOutStatus||null,clock_in_photo:rec.clockInPhoto||null,clock_out_photo:rec.clockOutPhoto||null,clock_in_location:rec.clockInLocation||null,clock_out_location:rec.clockOutLocation||null,clock_in_distance:rec.clockInDistance!=null?rec.clockInDistance:null,clock_out_distance:rec.clockOutDistance!=null?rec.clockOutDistance:null,device_id:rec.deviceId||null};
     return sb.from('attendance_records').upsert(row);
@@ -824,21 +784,9 @@ async getRecordsByStudent(studentId) {
     return sb.from('leaves').eq('id',id).update({status,review_note:note||null,reviewed_at:new Date().toISOString()});
   },
   async getAnnouncements() {
-    try {
-      const cached = sessionStorage.getItem('_ann_cache');
-      const cacheTime = sessionStorage.getItem('_ann_time');
-      if(cached && cacheTime && (Date.now() - +cacheTime) < 300000) {
-        return JSON.parse(cached);
-      }
-    } catch(e){}
     const {data} = await sb.from('announcements').order('created_at',{ascending:false}).get();
-    const result = (data||[]).map(r=>({id:r.id,title:r.title,content:r.content,priority:r.priority,createdAt:r.created_at}));
-    try {
-      sessionStorage.setItem('_ann_cache', JSON.stringify(result));
-      sessionStorage.setItem('_ann_time', Date.now().toString());
-    } catch(e){}
-    return result;
-},
+    return (data||[]).map(r=>({id:r.id,title:r.title,content:r.content,priority:r.priority,createdAt:r.created_at}));
+  },
   async saveAnnouncement(a) {
     return sb.from('announcements').insert({id:a.id,title:a.title,content:a.content,priority:a.priority});
   },
@@ -1608,7 +1556,7 @@ function NotifBell({targetId}) {
   const reload = useCallback(async()=>{
     try{const data=await DB.getNotifications(targetId);setNotifs(data||[]);}catch(e){}
   },[targetId]);
- useEffect(()=>{reload();const iv=setInterval(reload,5000);return()=>clearInterval(iv);},[reload]);
+  useEffect(()=>{reload();const iv=setInterval(reload,5000);return()=>clearInterval(iv);},[reload]);
   const unread=notifs.filter(n=>!n.read).length;
   const markRead=async()=>{await DB.markNotificationsRead(targetId);reload();};
   const clearAll=async()=>{await DB.clearNotifications(targetId);setNotifs([]);};
@@ -6047,14 +5995,7 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
     }
   },[isDemo]);
   useEffect(()=>{reload();},[reload]);
-  useEffect(()=>{
-  if(page!=='activity'){
-    const iv=setInterval(()=>{
-      if(!document.hidden) reload();
-    }, 90000); // 1.5 menit untuk admin
-    return()=>clearInterval(iv);
-  }
-},[page,reload]);
+  useEffect(()=>{if(page!=='activity'){const iv=setInterval(reload,30000);return()=>clearInterval(iv);}},[page,reload]);
 
   const saveSettings=async s=>{
     if(isDemo||!isSuperAdmin){alert('Akses ditolak: hanya Superadmin yang bisa mengubah pengaturan.');return;}await DB.saveSettings(s);setSettings(s);};
@@ -6190,28 +6131,18 @@ function StudentPanel({student,onLogout,isDemo=false}) {
       setRecords(DEMO_RECORDS);
       setLeaves([]);
       setSettings(DEMO_SETTINGS);
-      setAnns([...]);
+      setAnns([{id:'da1',title:'Selamat Datang di Mode Demo!',content:'Ini adalah akun demo. Data tidak tersimpan ke database.',priority:'important',createdAt:new Date().toISOString()}]);
       setLoading(false);return;
     }
-    // TAMBAH INI — hanya saat pertama load (loading masih true)
-    if(loading) {
-      const spreadDelay = Math.random() * 1500;
-      await new Promise(r => setTimeout(r, spreadDelay));
-    }
     try{
-      const[rec,lv,set_,an]=await Promise.all([DB.getRecordsByStudent(student.id),DB.getLeaves(),DB.getSettings(),DB.getAnnouncements()]);
-setRecords(rec); // tidak perlu filter lagi
+      const[rec,lv,set_,an]=await Promise.all([DB.getRecords(),DB.getLeaves(),DB.getSettings(),DB.getAnnouncements()]);
+      setRecords(rec.filter(r=>r.studentId===student.id));
       setLeaves(lv);setSettings(set_);setAnns(an);
     }catch(e){console.error('StudentPanel reload:',e);setLoadError('Gagal memuat data. Periksa koneksi internet.');}
     finally{setLoading(false);}
   },[student.id,isDemo]);
   useEffect(()=>{reload();},[reload]);
-  useEffect(()=>{
-  const iv=setInterval(()=>{
-    if(!document.hidden) reload();
-  }, 120000); // 2 menit, bukan 30 detik
-  return()=>clearInterval(iv);
-},[reload]);
+  useEffect(()=>{const iv=setInterval(reload,30000);return()=>clearInterval(iv);},[reload]);
 
   const handleCapture=async(photo,location,distance)=>{
     const now=new Date();const time=fmtTime(now).substring(0,5);const date=todayStr();
