@@ -602,7 +602,7 @@ method: 'POST',
 headers: this._headers(),
 body: JSON.stringify(Array.isArray(row) ? row : [row])
 }).then(async r => ({data: r.ok ? await r.json() : null, error: r.ok ? null : await r.text()}))
-.catch(e => ({null,error:e.message}));
+.catch(e => ({data:null,error:e.message}));
 },
 async update(row) {
 if(this._filters.length===0) return {null,error:'SAFETY: update tanpa filter ditolak'};
@@ -613,7 +613,7 @@ method: 'PATCH',
 headers: this._headers(),
 body: JSON.stringify(row)
 }).then(async r => ({ r.ok ? await r.json() : null, error: r.ok ? null : await r.text()}))
-.catch(e => ({null,error:e.message}));
+.catch(e => ({data:null,error:e.message}));
 },
 async delete() {
 if(this._filters.length===0) return {null,error:'SAFETY: delete tanpa filter ditolak'};
@@ -623,7 +623,7 @@ return fetch(fullUrl, {
 method: 'DELETE',
 headers: this._headers({'Prefer':'return=minimal'})
 }).then(async r => ({ null, error: r.ok ? null : await r.text()}))
-.catch(e => ({null,error:e.message}));
+.catch(e => ({data:null,error:e.message}));
 },
 async upsert(row) {
 return fetch(`${SUPABASE_URL}/rest/v1/${this._table}`, {
@@ -761,7 +761,7 @@ name:r.name,
 studentCode:r.student_code,
 password:r.password,
 kelas:r.kelas,
-nis:r.nis,
+nis:s.nis,
 phone:r.phone,
 active:r.active,
 deviceId:r.device_id,
