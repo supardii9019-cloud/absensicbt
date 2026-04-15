@@ -693,6 +693,33 @@ const fmtDate = d => d.toLocaleDateString('id-ID',{weekday:'long',year:'numeric'
 const fmtShort = s => { try { return new Date(s).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}); } catch(e) { return s; }};
 const todayStr = () => new Date().toISOString().split('T')[0];
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+  // ── CACHE LAYER ─────────────────────────────────────────────────
+const _cache = {};
+const _pendingReq = {};
+
+async function cachedFetch(key, fn, ttl = 60000) {
+  const now = Date.now();
+  if (_cache[key] && (now - _cache[key].ts) < ttl) {
+    return _cache[key].data;
+  }
+  if (_pendingReq[key]) {
+    return _pendingReq[key];
+  }
+  _pendingReq[key] = fn().then(data => {
+    _cache[key] = { data, ts: Date.now() };
+    delete _pendingReq[key];
+    return data;
+  }).catch(e => {
+    delete _pendingReq[key];
+    throw e;
+  });
+  return _pendingReq[key];
+}
+
+function invalidateCache(...keys) {
+  keys.forEach(k => { delete _cache[k]; delete _pendingReq[k]; });
+}
+// ── END CACHE LAYER ─────────────────────────────────────────────
 const isLate = (ci, ss) => { if(!ci||!ss) return false; try{const[h1,m1]=ci.split(':').map(Number);const[h2,m2]=ss.split(':').map(Number);return h1>h2||(h1===h2&&m1>m2);}catch(e){return false;} };
 const haversine = (a,b,c,d) => { if(a==null||b==null||c==null||d==null)return null;const R=6371000,dL=(c-a)*Math.PI/180,dN=(d-b)*Math.PI/180,x=Math.sin(dL/2)**2+Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(dN/2)**2; return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)); };
 const fmtDist = m => m<1000 ? `${Math.round(m)}m` : `${(m/1000).toFixed(1)}km`;
