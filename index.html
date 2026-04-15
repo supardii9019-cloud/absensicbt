@@ -631,7 +631,7 @@ const sb = {
     async _req(method, body) {
       try {
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 15000);
+        const timer = setTimeout(() => controller.abort(), 8000);
         const res = await fetch(this._buildUrl(method), {
           method,
           headers: this._headers(),
@@ -735,29 +735,103 @@ function genDevice() {
 // ================================================================
 const DB = {
   async getSettings() {
+  return cachedFetch('settings', async () => {
     const {data} = await sb.from('school_settings').eq('id','1').get();
-    if(!data||!data[0]) return {schoolName:'SMA Negeri 1 Jakarta',schoolStart:'07:00',schoolEnd:'15:00',deviceLock:true,locationName:'SMA Negeri 1',locationLat:-6.2088,locationLng:106.8456,locationRadius:200};
+    if(!data||!data[0]) return {
+      schoolName:'SMA Negeri 1 Jakarta',
+      schoolStart:'07:00',
+      schoolEnd:'15:00',
+      deviceLock:true,
+      locationName:'SMA Negeri 1',
+      locationLat:-6.2088,
+      locationLng:106.8456,
+      locationRadius:200
+    };
     const r=data[0];
-    return {schoolName:r.school_name,schoolStart:(r.school_start||'07:00').slice(0,5),schoolEnd:(r.school_end||'15:00').slice(0,5),deviceLock:r.device_lock,locationName:r.location_name,locationLat:r.location_lat,locationLng:r.location_lng,locationRadius:r.location_radius,fonnteToken:r.fonnte_token||'',fonnteDevice:r.fonnte_device||'',schoolLogo:r.logo||''};
-  },
+    return {
+      schoolName:r.school_name,
+      schoolStart:(r.school_start||'07:00').slice(0,5),
+      schoolEnd:(r.school_end||'15:00').slice(0,5),
+      deviceLock:r.device_lock,
+      locationName:r.location_name,
+      locationLat:r.location_lat,
+      locationLng:r.location_lng,
+      locationRadius:r.location_radius,
+      fonnteToken:r.fonnte_token||'',
+      fonnteDevice:r.fonnte_device||'',
+      schoolLogo:r.logo||''
+    };
+  }, 120000);
+},
   async saveSettings(s) {
-    await sb.from('school_settings').eq('id','1').update({school_name:s.schoolName,school_start:s.schoolStart,school_end:s.schoolEnd,device_lock:s.deviceLock,location_name:s.locationName,location_lat:s.locationLat,location_lng:s.locationLng,location_radius:s.locationRadius,fonnte_token:s.fonnteToken||'',fonnte_device:s.fonnteDevice||'',logo:s.schoolLogo||null,updated_at:new Date().toISOString()});
-  },
+  invalidateCache('settings');
+  await sb.from('school_settings').eq('id','1').update({
+    school_name:s.schoolName,
+    school_start:s.schoolStart,
+    school_end:s.schoolEnd,
+    device_lock:s.deviceLock,
+    location_name:s.locationName,
+    location_lat:s.locationLat,
+    location_lng:s.locationLng,
+    location_radius:s.locationRadius,
+    fonnte_token:s.fonnteToken||'',
+    fonnte_device:s.fonnteDevice||'',
+    logo:s.schoolLogo||null,
+    updated_at:new Date().toISOString()
+  });
+},
   async getStudents() {
+  return cachedFetch('students', async () => {
     const {data} = await sb.from('students').order('created_at',{ascending:true}).get();
-    return (data||[]).map(r=>({id:r.id,name:r.name,studentCode:r.student_code,password:r.password,kelas:r.kelas,nis:r.nis,phone:r.phone,active:r.active,deviceId:r.device_id,deviceInfo:r.device_info,createdAt:r.created_at}));
-  },
-  async saveStudent(s) {
-    const row = {id:s.id,name:s.name,student_code:s.studentCode,password:s.password,kelas:s.kelas,nis:s.nis,phone:s.phone,active:s.active,device_id:s.deviceId||null,device_info:s.deviceInfo||null};
-    return sb.from('students').upsert(row);
-  },
-  async deleteStudent(id) { return sb.from('students').eq('id',id).delete(); },
+    return (data||[]).map(r=>({
+      id:r.id,
+      name:r.name,
+      studentCode:r.student_code,
+      password:r.password,
+      kelas:r.kelas,
+      nis:r.nis,
+      phone:r.phone,
+      active:r.active,
+      deviceId:r.device_id,
+      deviceInfo:r.device_info,
+      createdAt:r.created_at
+    }));
+  }, 30000);
+},
+ async saveStudent(s) {
+  invalidateCache('students');
+  const row = {
+    id:s.id,
+    name:s.name,
+    student_code:s.studentCode,
+    password:s.password,
+    kelas:s.kelas,
+    nis:r.nis,
+    phone:s.phone,
+    active:s.active,
+    device_id:s.deviceId||null,
+    device_info:s.deviceInfo||null
+  };
+  return sb.from('students').upsert(row);
+},
+  async deleteStudent(id) {
+  invalidateCache('students');
+  return sb.from('students').eq('id',id).delete();
+},
   async updateStudentDevice(id, deviceId, deviceInfo) {
-    return sb.from('students').eq('id',id).update({device_id:deviceId,device_info:deviceInfo});
-  },
+  invalidateCache('students');
+  return sb.from('students').eq('id',id).update({
+    device_id:deviceId,
+    device_info:deviceInfo
+  });
+},
   async resetStudentDevice(id) {
-    return sb.from('students').eq('id',id).update({device_id:null,device_info:null});
-  },
+  invalidateCache('students');
+  return sb.from('students').eq('id',id).update({
+    device_id:null,
+    device_info:null
+  });
+},
   async getRecords() {
     const {data} = await sb.from('attendance_records').order('date',{ascending:false}).order('created_at',{ascending:false}).get();
     return (data||[]).map(r=>({id:r.id,studentId:r.student_id,studentName:r.student_name,studentCode:r.student_code,date:r.date,clockIn:r.clock_in?r.clock_in.slice(0,5):null,clockInStatus:r.clock_in_status||null,clockOut:r.clock_out?r.clock_out.slice(0,5):null,clockOutStatus:r.clock_out_status||null,clockInPhoto:r.clock_in_photo,clockOutPhoto:r.clock_out_photo,clockInLocation:r.clock_in_location,clockOutLocation:r.clock_out_location,clockInDistance:r.clock_in_distance,clockOutDistance:r.clock_out_distance,deviceId:r.device_id}));
@@ -1955,37 +2029,44 @@ function LoginScreen({onLogin}) {
     }catch(e){setError('Koneksi gagal: '+e.message);}
     setLoading(false);
   };
-  const loginStudent=async()=>{
-    // Cek akun demo dulu — tanpa DB
-    if(stuCode.toUpperCase()==='DEMO01'&&stuPass==='demo123'){
-      onLogin({role:'student',student:DEMO_STUDENT,isDemo:true});return;
-    }
-    setLoading(true);setError('');
-    try {
-      const students=await DB.getStudents();
-      const stu=students.find(s=>(s.nis&&s.nis.toLowerCase()===stuCode.toLowerCase()||s.studentCode.toLowerCase()===stuCode.toLowerCase())&&s.password===stuPass&&s.active);
-      if(!stu){setError('NIS atau password salah');setLoading(false);return;}
-      const sv=settings||await DB.getSettings();
-      if(sv.deviceLock){
-        // Cek apakah device ini sudah terdaftar ke siswa LAIN
-        const ownerOther=students.find(s=>s.id!==stu.id&&s.deviceId&&s.deviceId===devInfo.id);
-        if(ownerOther){
-          setError('Perangkat ini sudah terdaftar atas nama: '+ownerOther.name+'\nSatu perangkat hanya untuk 1 akun siswa.');
-          await DB.addLog(stu.name,'Login Ditolak','Device milik '+ownerOther.name);setLoading(false);return;
-        }
-        // Cek apakah siswa ini sudah terdaftar di perangkat LAIN
-        if(stu.deviceId&&stu.deviceId!==devInfo.id){
-          setError('Akun ini sudah terdaftar di perangkat lain.\nTerdaftar: '+(stu.deviceInfo&&stu.deviceInfo.name||stu.deviceId)+'\nHubungi admin untuk reset perangkat.');
-          await DB.addLog(stu.name,'Login Ditolak','Device mismatch');setLoading(false);return;
-        }
+  const loginStudent = async () => {
+  if(stuCode.toUpperCase()==='DEMO01' && stuPass==='demo123'){
+    onLogin({role:'student',student:DEMO_STUDENT,isDemo:true}); return;
+  }
+  setLoading(true); setError('');
+  try {
+    const [students, sv] = await Promise.all([
+      DB.getStudents(),
+      DB.getSettings()
+    ]);
+    const stu = students.find(s =>
+      (s.nis && s.nis.toLowerCase()===stuCode.toLowerCase() ||
+       s.studentCode.toLowerCase()===stuCode.toLowerCase()) &&
+      s.password===stuPass && s.active
+    );
+    if(!stu){ setError('NIS atau password salah'); setLoading(false); return; }
+    if(sv.deviceLock){
+      const ownerOther = students.find(s=>s.id!==stu.id&&s.deviceId&&s.deviceId===devInfo.id);
+      if(ownerOther){
+        setError('Perangkat ini sudah terdaftar atas nama: '+ownerOther.name+'\nSatu perangkat hanya untuk 1 akun siswa.');
+        await DB.addLog(stu.name,'Login Ditolak','Device milik '+ownerOther.name);
+        setLoading(false); return;
       }
-      // Daftarkan device jika belum ada
-      if(!stu.deviceId){await DB.updateStudentDevice(stu.id,devInfo.id,devInfo);stu.deviceId=devInfo.id;stu.deviceInfo=devInfo;}
-      await DB.addLog(stu.name,'Login',stu.studentCode);
-      onLogin({role:'student',student:stu});
-    } catch(e){setError('Koneksi gagal: '+e.message);}
-    setLoading(false);
-  };
+      if(stu.deviceId && stu.deviceId!==devInfo.id){
+        setError('Akun ini sudah terdaftar di perangkat lain.\nTerdaftar: '+(stu.deviceInfo&&stu.deviceInfo.name||stu.deviceId)+'\nHubungi admin untuk reset perangkat.');
+        await DB.addLog(stu.name,'Login Ditolak','Device mismatch');
+        setLoading(false); return;
+      }
+    }
+    if(!stu.deviceId){
+      await DB.updateStudentDevice(stu.id, devInfo.id, devInfo);
+      stu.deviceId=devInfo.id; stu.deviceInfo=devInfo;
+    }
+    await DB.addLog(stu.name,'Login',stu.studentCode);
+    onLogin({role:'student',student:stu});
+  } catch(e){ setError('Koneksi gagal. Coba lagi dalam beberapa detik.'); }
+  setLoading(false);
+};
   const inSt={padding:'12px 16px',borderRadius:'12px',fontSize:'14px'};
   const tabBtn=active=>({flex:1,padding:'12px',borderRadius:'12px',fontFamily:ORB,fontSize:'12px',letterSpacing:'0.2em',textTransform:'uppercase',border:'1px solid',cursor:'pointer',transition:'all .3s',background:active?'rgba(0,240,255,.1)':'var(--bg-panel)',color:active?'#00f0ff':'var(--text-muted)',borderColor:active?'rgba(0,240,255,.4)':'var(--border)'});
   const schoolName=settings?settings.schoolName:'SMA Negeri 1 Jakarta';
@@ -6142,7 +6223,11 @@ function StudentPanel({student,onLogout,isDemo=false}) {
     finally{setLoading(false);}
   },[student.id,isDemo]);
   useEffect(()=>{reload();},[reload]);
-  useEffect(()=>{const iv=setInterval(reload,30000);return()=>clearInterval(iv);},[reload]);
+  useEffect(()=>{
+  if(page==='activity') return;
+  const iv = setInterval(()=>{ if(!document.hidden) reload(); }, 60000);
+  return()=>clearInterval(iv);
+},[page,reload]);
 
   const handleCapture=async(photo,location,distance)=>{
     const now=new Date();const time=fmtTime(now).substring(0,5);const date=todayStr();
@@ -6850,10 +6935,14 @@ function App() {
     setSession(s);
   };
 
-  useEffect(()=>{
-    if(session){setChecking(false);return;} // sudah ada session dari storage
-    DB.getSettings().then(()=>setChecking(false)).catch(()=>setChecking(false));
-  },[]);
+ useEffect(()=>{
+  if(session){setChecking(false);return;}
+  const timeout = setTimeout(()=>setChecking(false), 8000);
+  DB.getSettings()
+    .then(()=>{ clearTimeout(timeout); setChecking(false); })
+    .catch(()=>{ clearTimeout(timeout); setChecking(false); });
+  return ()=>clearTimeout(timeout);
+},[]);
 
   if(checking)return h(LoadingScreen,{msg:'Menghubungkan ke Supabase...'});
   if(!session)return h(LoginScreen,{onLogin:saveSession});
