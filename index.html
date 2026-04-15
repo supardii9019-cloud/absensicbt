@@ -7270,6 +7270,41 @@ navigator.serviceWorker.addEventListener('message',function(event){
   }
 });
 </script>
+<!-- Tambahkan di index.html, misal di header/footer -->
+<button id="btn-install-pwa" style="display:none;position:fixed;bottom:20px;right:20px;z-index:9999;background:#4F46E5;color:#fff;border:none;border-radius:50px;padding:12px 20px;font-size:14px;box-shadow:0 4px 12px rgba(0,0,0,0.3);cursor:pointer">
+  📲 Install App
+</button>
 
+<script>
+// Show/hide install button based on deferredPrompt
+var installBtn = document.getElementById('btn-install-pwa');
+
+window.addEventListener('beforeinstallprompt', function(e) {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBtn) installBtn.style.display = 'block';
+});
+
+if (installBtn) {
+  installBtn.onclick = function() {
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      deferredPrompt.userChoice.then(function(choice) {
+        if (choice.outcome === 'accepted') {
+          console.log('[PWA] User accepted install');
+        }
+        deferredPrompt = null;
+        installBtn.style.display = 'none';
+      });
+    }
+  };
+}
+
+// Hide button after app is installed
+window.addEventListener('appinstalled', function() {
+  if (installBtn) installBtn.style.display = 'none';
+  deferredPrompt = null;
+});
+</script>
 </body>
 </html>
