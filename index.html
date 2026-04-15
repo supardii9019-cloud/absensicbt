@@ -761,7 +761,7 @@ name:r.name,
 studentCode:r.student_code,
 password:r.password,
 kelas:r.kelas,
-nis:s.nis,
+nis:r.nis,
 phone:r.phone,
 active:r.active,
 deviceId:r.device_id,
@@ -778,7 +778,7 @@ name:s.name,
 student_code:s.studentCode,
 password:s.password,
 kelas:s.kelas,
-nis:s.nis, // PERBAIKAN: r.nis diganti s.nis
+nis:r.nis, // PERBAIKAN: r.nis diganti s.nis
 phone:s.phone,
 active:s.active,
 device_id:s.deviceId||null,
@@ -2128,7 +2128,7 @@ const[showForm,setShowForm]=useState(false);const[editId,setEditId]=useState(nul
 const[form,setForm]=useState({name:'',studentCode:'',password:'123456',kelas:'',nis:'',phone:''});
 const filtered=students.filter(s=>(s.name.toLowerCase().includes(search.toLowerCase())||s.studentCode.toLowerCase().includes(search.toLowerCase())||s.kelas.toLowerCase().includes(search.toLowerCase()))&&(!fKelasFilter||s.kelas===fKelasFilter));
 const openAdd=()=>{setForm({name:'',studentCode:'',password:'123456',kelas:'',nis:'',phone:''});setEditId(null);setShowForm(true);};
-const openEdit=s=>{setForm({name:s.name,studentCode:s.studentCode,password:s.password,kelas:s.kelas,nis:s.nis,phone:s.phone});setEditId(s.id);setShowForm(true);};
+const openEdit=s=>{setForm({name:s.name,studentCode:s.studentCode,password:s.password,kelas:s.kelas,nis:r.nis,phone:s.phone});setEditId(s.id);setShowForm(true);};
 const handleSave=async()=>{
 if(!form.name.trim()||!form.studentCode.trim()){alert('Nama dan ID Siswa wajib');return;}
 if(!editId&&students.some(s=>s.studentCode.toLowerCase()===form.studentCode.toLowerCase())){alert('ID Siswa sudah ada');return;}
