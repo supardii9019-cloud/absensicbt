@@ -6986,139 +6986,281 @@ function App() {
 ReactDOM.createRoot(document.getElementById('root')).render(h(ErrorBoundary,null,h(App)));
 </script>
 
-<!-- PWA Install Prompt -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- PWA SERVICE WORKER + INSTALL PROMPT (Vercel-Ready)      -->
+<!-- ═══════════════════════════════════════════════════════ -->
 <script>
-if('serviceWorker' in navigator){
-  // Paksa update SW yang sudah terdaftar
-  navigator.serviceWorker.getRegistrations().then(function(regs){
-    regs.forEach(function(reg){ reg.update(); });
-  });
+(function() {
+  'use strict';
+  
+  // ── DETEKSI ENVIRONMENT ─────────────────────────────────
+  var hostname = window.location.hostname;
+  var isVercel = hostname.includes('vercel.app') || 
+                 hostname.includes('localhost') ||
+                 (!hostname.includes('github.io') && !hostname.includes('pages.dev'));
+  
+  // ── SET PATH & SCOPE ────────────────────────────────────
+  var swPath = '/sw.js';
+  var scope = '/';
+  
+  if (!isVercel) {
+    // GitHub Pages: handle subfolder /repo/
+    var parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts.length > 0) {
+      var base = '/' + parts[0] + '/';
+      swPath = base + 'sw.js';
+      scope = base;
+    }
+  }
+  
+  console.log('[PWA] Env:', isVercel ? 'Vercel' : 'GitHub', '| SW:', swPath, '| Scope:', scope);
 
-  window.addEventListener('load', function(){
-    // Hitung base path yang benar untuk GitHub Pages subfolder
-    // Contoh: https://user.github.io/repo/ → base = '/repo/'
-    var pathParts = window.location.pathname.split('/');
-    pathParts.pop(); // hapus nama file (index.html atau kosong)
-    var base = pathParts.join('/') + '/';
-    if(base === '/') base = '/';
-    var swPath = base + 'sw.js';
+  // ── REGISTER SERVICE WORKER ─────────────────────────────
+  if ('serviceWorker' in navigator) {
+    
+    // ✅ Message listener HARUS didaftarkan sebelum register
+    navigator.serviceWorker.addEventListener('message', function(event) {
+      if (!event.data) return;
+      
+      // SW updated → reload page
+      if (event.data.type === 'SW_UPDATED') {
+        console.log('[PWA] New version detected, reloading...');
+        setTimeout(function() { window.location.reload(); }, 150);
+        return;
+      }
+      
+      // CBT cache cleared → cleanup sessionStorage
+      if (event.data.type === 'CBT_CACHE_CLEARED') {
+        console.log('[PWA] CBT cache cleared');
+        Object.keys(sessionStorage)
+          .filter(function(k) { return k.indexOf('cbt_q_') === 0; })
+          .forEach(function(k) { sessionStorage.removeItem(k); });
+        return;
+      }
+    });
 
-    console.log('[AbsensiKu] Mendaftarkan SW di:', swPath, 'scope:', base);
-
-    navigator.serviceWorker.register(swPath, {scope: base})
-      .then(function(r){
-        console.log('[AbsensiKu] SW terdaftar, scope:', r.scope);
-        r.update();
-        if(r.waiting){
-          r.waiting.postMessage({type:'SKIP_WAITING'});
-        }
-        r.addEventListener('updatefound', function(){
-          var newSW = r.installing;
-          if(newSW){
-            newSW.addEventListener('statechange', function(){
-              if(newSW.state === 'installed' && navigator.serviceWorker.controller){
-                // SW baru siap → paksa skipWaiting lalu reload
-                newSW.postMessage({type:'SKIP_WAITING'});
+    // Register setelah page load
+    window.addEventListener('load', function() {
+      console.log('[PWA] Registering SW:', swPath, 'scope:', scope);
+      
+      navigator.serviceWorker.register(swPath, { scope: scope })
+        .then(function(registration) {
+          console.log('[PWA] ✓ Registered, scope:', registration.scope);
+          
+          // Force check for updates
+          registration.update();
+          
+          // Handle waiting worker
+          if (registration.waiting) {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          }
+          
+          // Listen for new SW
+          registration.addEventListener('updatefound', function() {
+            var newWorker = registration.installing;
+            if (!newWorker) return;
+            
+            newWorker.addEventListener('statechange', function() {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                // New SW ready → skip waiting
+                newWorker.postMessage({ type: 'SKIP_WAITING' });
               }
-              if(newSW.state === 'activated'){
-                window.location.reload();
+              if (newWorker.state === 'activated') {
+                // SW activated → reload after short delay
+                setTimeout(function() { window.location.reload(); }, 150);
               }
             });
-          }
+          });
+          
+          showPWAStatus('Service Worker aktif ✓', '#00ff88');
+        })
+        .catch(function(error) {
+          console.warn('[PWA] ✗ Registration failed:', error);
+          showPWAStatus('SW error: ' + error.message, '#f87171');
         });
-        showPWAStatus('SW aktif ✓', '#00ff88');
-      })
-      .catch(function(e){
-        console.warn('[AbsensiKu] SW gagal daftar:', e.message);
-        showPWAStatus('SW gagal: '+e.message, '#f87171');
-      });
+    });
+  }
+
+  // ── SHOW STATUS TOAST ───────────────────────────────────
+  function showPWAStatus(message, color) {
+    // Remove old status first
+    var old = document.querySelector('[data-pwa-status]');
+    if (old) old.remove();
+    
+    var toast = document.createElement('div');
+    toast.setAttribute('data-pwa-status', 'true');
+    toast.style.cssText = [
+      'position:fixed',
+      'bottom:80px',
+      'left:16px',
+      'right:16px',
+      'z-index:99998',
+      'background:rgba(0,0,0,0.85)',
+      'border:1px solid ' + color,
+      'border-radius:10px',
+      'padding:10px 14px',
+      'font-family:monospace',
+      'font-size:11px',
+      'color:' + color,
+      'backdrop-filter:none',
+      'pointer-events:none',
+      'animation:fadeIn 0.2s ease'
+    ].join(';');
+    toast.textContent = '[PWA] ' + message;
+    document.body.appendChild(toast);
+    
+    // Auto remove after 6 seconds
+    setTimeout(function() {
+      if (toast.parentNode) {
+        toast.style.opacity = '0';
+        toast.style.transition = 'opacity 0.3s';
+        setTimeout(function() { if (toast.parentNode) toast.remove(); }, 300);
+      }
+    }, 6000);
+  }
+
+  // ── INSTALL PROMPT HANDLER ──────────────────────────────
+  var deferredPrompt = null;
+
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredPrompt = e;
+    console.log('[PWA] Install prompt available');
+    showPWAStatus('Install tersedia! ✓', '#00f0ff');
+    // Show modal after short delay
+    setTimeout(showInstallModal, 800);
   });
-}
 
-function showPWAStatus(msg, color) {
-  var el = document.createElement('div');
-  el.style.cssText = 'position:fixed;bottom:80px;left:16px;right:16px;z-index:99998;background:rgba(0,0,0,.85);border:1px solid '+color+';border-radius:10px;padding:10px 14px;font-family:monospace;font-size:11px;color:'+color+';backdrop-filter:none';
-  el.textContent = '[PWA] ' + msg;
-  document.body.appendChild(el);
-  setTimeout(function(){ if(el.parentNode) el.remove(); }, 6000);
-}
+  window.addEventListener('appinstalled', function() {
+    deferredPrompt = null;
+    var modal = document.getElementById('pwa-install-modal');
+    if (modal) modal.remove();
+    showPWAStatus('AbsensiKu berhasil diinstall! 🎉', '#00ff88');
+  });
 
-var deferredPrompt = null;
+  // ── INSTALL MODAL UI ────────────────────────────────────
+  function showInstallModal() {
+    // Prevent duplicate modals
+    if (document.getElementById('pwa-install-modal')) return;
+    
+    var overlay = document.createElement('div');
+    overlay.id = 'pwa-install-modal';
+    overlay.style.cssText = [
+      'position:fixed',
+      'inset:0',
+      'z-index:99999',
+      'display:flex',
+      'align-items:center',
+      'justify-content:center',
+      'padding:24px',
+      'background:rgba(0,0,0,0.75)',
+      'backdrop-filter:blur(4px)'
+    ].join(';');
+    
+    var box = document.createElement('div');
+    box.style.cssText = [
+      'background:#1f2937',
+      'border:1px solid rgba(0,240,255,0.4)',
+      'border-radius:24px',
+      'padding:32px 24px',
+      'max-width:360px',
+      'width:100%',
+      'text-align:center',
+      'box-shadow:0 20px 60px rgba(0,0,0,0.5)'
+    ].join(';');
+    
+    var icon = document.createElement('div');
+    icon.style.cssText = 'font-size:56px;margin-bottom:16px;line-height:1';
+    icon.textContent = '📲';
+    
+    var title = document.createElement('h3');
+    title.style.cssText = [
+      'font-family:system-ui,-apple-system,sans-serif',
+      'font-size:20px',
+      'font-weight:700',
+      'color:#fff',
+      'margin:0 0 8px',
+      'letter-spacing:0.5px'
+    ].join(';');
+    title.innerHTML = 'Install <span style="color:#00f0ff">AbsensiKu</span>';
+    
+    var desc = document.createElement('p');
+    desc.style.cssText = [
+      'color:#9ca3af',
+      'font-size:14px',
+      'line-height:1.6',
+      'margin:0 0 24px'
+    ].join(';');
+    desc.textContent = 'Tambahkan ke layar utama untuk akses cepat, mode offline, dan pengalaman seperti aplikasi native.';
+    
+    var btnInstall = document.createElement('button');
+    btnInstall.style.cssText = [
+      'width:100%',
+      'padding:14px 20px',
+      'border-radius:12px',
+      'background:linear-gradient(135deg, #00f0ff, #7c3aed)',
+      'border:none',
+      'color:#fff',
+      'font-family:system-ui,sans-serif',
+      'font-size:14px',
+      'font-weight:600',
+      'cursor:pointer',
+      'margin-bottom:12px',
+      'transition:transform 0.1s'
+    ].join(';');
+    btnInstall.textContent = '🚀 Install Sekarang';
+    btnInstall.onmouseenter = function() { this.style.transform = 'scale(1.02)'; };
+    btnInstall.onmouseleave = function() { this.style.transform = 'scale(1)'; };
+    btnInstall.onclick = function() {
+      var modal = document.getElementById('pwa-install-modal');
+      if (modal) modal.remove();
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(function(choice) {
+          console.log('[PWA] Install choice:', choice.outcome);
+          deferredPrompt = null;
+        });
+      }
+    };
+    
+    var btnLater = document.createElement('button');
+    btnLater.style.cssText = [
+      'width:100%',
+      'padding:12px 20px',
+      'border-radius:12px',
+      'background:transparent',
+      'border:1px solid #374151',
+      'color:#9ca3af',
+      'font-family:system-ui,sans-serif',
+      'font-size:13px',
+      'cursor:pointer'
+    ].join(';');
+    btnLater.textContent = 'Nanti Saja';
+    btnLater.onclick = function() {
+      var modal = document.getElementById('pwa-install-modal');
+      if (modal) modal.remove();
+    };
+    
+    // Assemble
+    box.appendChild(icon);
+    box.appendChild(title);
+    box.appendChild(desc);
+    box.appendChild(btnInstall);
+    box.appendChild(btnLater);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+    
+    // Close on overlay click
+    overlay.onclick = function(e) {
+      if (e.target === overlay) overlay.remove();
+    };
+  }
 
-window.addEventListener('beforeinstallprompt', function(e){
-  e.preventDefault();
-  deferredPrompt = e;
-  console.log('[AbsensiKu] Install prompt siap!');
-  showPWAStatus('Install prompt siap! Membuka dialog...', '#00f0ff');
-  setTimeout(function(){ showInstallModal(); }, 500);
-});
-
-window.addEventListener('appinstalled', function(){
-  deferredPrompt = null;
-  var m = document.getElementById('pwa-modal');
-  if(m) m.remove();
-  showPWAStatus('AbsensiKu berhasil diinstall ke App Drawer!', '#00ff88');
-});
-
-function showInstallModal(){
-  if(document.getElementById('pwa-modal')) return;
-
-  var overlay = document.createElement('div');
-  overlay.id = 'pwa-modal';
-  overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;display:flex;align-items:center;justify-content:center;padding:24px;background:rgba(0,0,0,.75);backdrop-filter:none';
-
-  var box = document.createElement('div');
-  box.style.cssText = 'background:var(--bg-panel-s);border:1px solid rgba(0,240,255,.4);border-radius:24px;padding:32px 24px;max-width:340px;width:100%;text-align:center;box-shadow:0 0 60px rgba(0,240,255,.2)';
-
-  var icon = document.createElement('div');
-  icon.style.cssText = 'font-size:56px;margin-bottom:16px';
-  icon.textContent = '📲';
-
-  var title = document.createElement('h2');
-  title.style.cssText = 'font-family:Orbitron,monospace;font-size:18px;font-weight:700;color:#fff;letter-spacing:0.1em;margin-bottom:6px';
-  title.innerHTML = 'ABSENSI<span style="color:#a855f7">KU</span>';
-
-  var sub = document.createElement('p');
-  sub.style.cssText = 'color:rgba(0,240,255,.7);font-size:12px;font-family:JetBrains Mono,monospace;letter-spacing:0.2em;margin-bottom:20px';
-  sub.textContent = 'Install Aplikasi';
-
-  var desc = document.createElement('p');
-  desc.style.cssText = 'color:var(--text-muted);font-size:13px;line-height:1.6;margin-bottom:28px';
-  desc.textContent = 'Install AbsensiKu ke perangkat Anda. App akan tersedia di layar utama dan dapat di-uninstall seperti app biasa.';
-
-  var btnInstall = document.createElement('button');
-  btnInstall.style.cssText = 'width:100%;padding:16px;border-radius:14px;background:linear-gradient(135deg,rgba(0,240,255,.2),rgba(168,85,247,.2));border:1px solid rgba(0,240,255,.5);color:#00f0ff;font-family:Orbitron,monospace;font-size:13px;font-weight:700;letter-spacing:0.2em;cursor:pointer;margin-bottom:12px';
-  btnInstall.textContent = 'INSTALL SEKARANG';
-  btnInstall.onclick = function(){
-    var m = document.getElementById('pwa-modal');
-    if(m) m.remove();
-    if(deferredPrompt){
-      deferredPrompt.prompt();
-      deferredPrompt.userChoice.then(function(){ deferredPrompt = null; });
-    }
-  };
-
-  var btnSkip = document.createElement('button');
-  btnSkip.style.cssText = 'width:100%;padding:12px;border-radius:14px;background:none;border:1px solid var(--border);color:var(--text-muted);font-family:JetBrains Mono,monospace;font-size:11px;cursor:pointer';
-  btnSkip.textContent = 'Nanti saja';
-  btnSkip.onclick = function(){
-    var m = document.getElementById('pwa-modal');
-    if(m) m.remove();
-  };
-
-  box.appendChild(icon);
-  box.appendChild(title);
-  box.appendChild(sub);
-  box.appendChild(desc);
-  box.appendChild(btnInstall);
-  box.appendChild(btnSkip);
-  overlay.appendChild(box);
-  document.body.appendChild(overlay);
-}
-
-
+})();
 </script>
-
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- END PWA SCRIPT                                          -->
+<!-- ═══════════════════════════════════════════════════════ -->
 <script>
 navigator.serviceWorker.addEventListener('message',function(event){
   if(event.data&&event.data.type==='SW_UPDATED'){window.location.reload();return;}
