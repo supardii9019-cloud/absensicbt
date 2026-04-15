@@ -7270,53 +7270,44 @@ navigator.serviceWorker.addEventListener('message',function(event){
   }
 });
 </script>
-<!-- TOMBOL INSTALL PWA - ROBUST VERSION -->
-<button id="btn-install-pwa" style="display:none;position:fixed;bottom:20px;right:20px;z-index:99999;background:#4F46E5;color:#fff;border:none;border-radius:50px;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(79,70,229,0.4);cursor:pointer;display:flex;align-items:center;gap:8px">
-  <span>📲</span><span>Install</span>
-</button>
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <!-- TOMBOL INSTALL PWA                                      -->
+    <!-- ═══════════════════════════════════════════════════════ -->
+    <button id="btn-install-pwa" style="display:none;position:fixed;bottom:20px;right:20px;z-index:99999;background:#4F46E5;color:#fff;border:none;border-radius:50px;padding:14px 20px;font-size:14px;font-weight:600;box-shadow:0 4px 20px rgba(79,70,229,0.4);cursor:pointer;display:flex;align-items:center;gap:8px">
+      <span>📲</span><span>Instal</span>
+    </button>
 
-<script>
-(function() {
-  var btn = document.getElementById('btn-install-pwa');
-  if (!btn) return;
-  
-  // Cek apakah PWA sudah terinstall
-  if (window.matchMedia('(display-mode: standalone)').matches) {
-    btn.style.display = 'none'; // Sudah terinstall, hide button
-    return;
-  }
-  
-  // Listen install prompt
-  window.addEventListener('beforeinstallprompt', function(e) {
-    e.preventDefault();
-    window.deferredPrompt = e;
-    btn.style.display = 'flex'; // Show button
-    console.log('[PWA] Install ready');
-  });
-  
-  // Handle button click
-  btn.onclick = function() {
-    if (!window.deferredPrompt) {
-      // Fallback: tampilkan petunjuk manual
-      alert('📱 Untuk install:\n1. Tap menu ⋮ di Chrome\n2. Pilih "Tambahkan ke Layar Utama"');
-      return;
-    }
-    
-    window.deferredPrompt.prompt();
-    window.deferredPrompt.userChoice.then(function(choice) {
-      if (choice.outcome === 'accepted') {
+    <script>
+    (function() {
+      var btn = document.getElementById('btn-install-pwa');
+      if (!btn) return;
+      
+      window.addEventListener('beforeinstallprompt', function(e) {
+        e.preventDefault();
+        window.deferredPrompt = e;
+        btn.style.display = 'flex';
+      });
+      
+      btn.onclick = function() {
+        if (!window.deferredPrompt) return;
+        window.deferredPrompt.prompt();
+        window.deferredPrompt.userChoice.then(function(choice) {
+          if (choice.outcome === 'accepted') {
+            btn.style.display = 'none';
+          }
+          window.deferredPrompt = null;
+        });
+      };
+      
+      window.addEventListener('appinstalled', function() {
         btn.style.display = 'none';
-      }
-      window.deferredPrompt = null;
-    });
-  };
-  
-  // Hide after installed
-  window.addEventListener('appinstalled', function() {
-    btn.style.display = 'none';
-    window.deferredPrompt = null;
-  });
-})();
+        window.deferredPrompt = null;
+      });
+    })();
+    </script>
+    <!-- ═══════════════════════════════════════════════════════ -->
+  </body>
+</html>
 </script>
 </body>
 </html>
