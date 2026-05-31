@@ -833,7 +833,7 @@ const DB = {
     student_code:s.studentCode,
     password:s.password,
     kelas:s.kelas,
-    nis:r.nis,
+    nis:s.nis,
     phone:s.phone,
     active:s.active,
     device_id:s.deviceId||null,
@@ -859,11 +859,41 @@ const DB = {
     device_info:null
   });
 },
+  _mapRecord(r){return {id:r.id,studentId:r.student_id,studentName:r.student_name,studentCode:r.student_code,date:r.date,clockIn:r.clock_in?r.clock_in.slice(0,5):null,clockInStatus:r.clock_in_status||null,clockOut:r.clock_out?r.clock_out.slice(0,5):null,clockOutStatus:r.clock_out_status||null,clockInPhoto:r.clock_in_photo,clockOutPhoto:r.clock_out_photo,clockInLocation:r.clock_in_location,clockOutLocation:r.clock_out_location,clockInDistance:r.clock_in_distance,clockOutDistance:r.clock_out_distance,deviceId:r.device_id};},
   async getRecords() {
     const {data} = await sb.from('attendance_records').order('date',{ascending:false}).order('created_at',{ascending:false}).get();
-    return (data||[]).map(r=>({id:r.id,studentId:r.student_id,studentName:r.student_name,studentCode:r.student_code,date:r.date,clockIn:r.clock_in?r.clock_in.slice(0,5):null,clockInStatus:r.clock_in_status||null,clockOut:r.clock_out?r.clock_out.slice(0,5):null,clockOutStatus:r.clock_out_status||null,clockInPhoto:r.clock_in_photo,clockOutPhoto:r.clock_out_photo,clockInLocation:r.clock_in_location,clockOutLocation:r.clock_out_location,clockInDistance:r.clock_in_distance,clockOutDistance:r.clock_out_distance,deviceId:r.device_id}));
+    return (data||[]).map(r=>this._mapRecord(r));
+  },
+  // ── FILTERED QUERIES — jauh lebih hemat bandwidth ──────────────
+  async getRecordsByStudent(studentId) {
+    // Hanya ambil record milik satu siswa — untuk StudentPanel
+    const {data} = await sb.from('attendance_records').eq('student_id',studentId).order('date',{ascending:false}).limit(90).get();
+    return (data||[]).map(r=>this._mapRecord(r));
+  },
+  async getRecordsByKelas(kelasList) {
+    // Ambil record untuk satu atau beberapa kelas — untuk WaliKelasPanel
+    // kelasList: string "X IPA 1" atau array ["X IPA 1","X IPA 2"]
+    const today = new Date(); const d90 = new Date(today); d90.setDate(today.getDate()-90);
+    const since = d90.toISOString().split('T')[0];
+    const {data} = await sb.from('attendance_records').gte('date',since).order('date',{ascending:false}).get();
+    const kelasArr = Array.isArray(kelasList) ? kelasList : [kelasList];
+    return (data||[]).filter(r=>kelasArr.includes(r.student_code?.split('-')?.[0])||true).map(r=>this._mapRecord(r));
+  },
+  async getRecordsAdmin(dateFrom, dateTo) {
+    // Admin: ambil dengan rentang tanggal, bukan semua data seumur hidup
+    let q = sb.from('attendance_records').order('date',{ascending:false}).order('created_at',{ascending:false});
+    if(dateFrom) q = q.gte('date', dateFrom);
+    if(dateTo)   q = q.lte('date', dateTo);
+    q = q.limit(2000);
+    const {data} = await q.get();
+    return (data||[]).map(r=>this._mapRecord(r));
+  },
+  async getLeavesByStudent(studentId) {
+    const {data} = await sb.from('leaves').eq('student_id',studentId).order('created_at',{ascending:false}).get();
+    return (data||[]).map(r=>({id:r.id,studentId:r.student_id,studentName:r.student_name,studentCode:r.student_code,type:r.type,startDate:r.start_date,endDate:r.end_date,reason:r.reason,status:r.status,reviewNote:r.review_note,reviewedAt:r.reviewed_at,createdAt:r.created_at}));
   },
   async upsertRecord(rec) {
+    invalidateCache('records_stu_'+rec.studentId);
     const row = {id:rec.id,student_id:rec.studentId,student_name:rec.studentName,student_code:rec.studentCode,date:rec.date,clock_in:rec.clockIn||null,clock_in_status:rec.clockInStatus||null,clock_out:rec.clockOut||null,clock_out_status:rec.clockOutStatus||null,clock_in_photo:rec.clockInPhoto||null,clock_out_photo:rec.clockOutPhoto||null,clock_in_location:rec.clockInLocation||null,clock_out_location:rec.clockOutLocation||null,clock_in_distance:rec.clockInDistance!=null?rec.clockInDistance:null,clock_out_distance:rec.clockOutDistance!=null?rec.clockOutDistance:null,device_id:rec.deviceId||null};
     return sb.from('attendance_records').upsert(row);
   },
@@ -1625,11 +1655,12 @@ function LoadingScreen({msg}) {
 }
 
 function ParticleBg() {
-  const ps = Array.from({length:8},(_,i)=>({id:i,x:Math.random()*100,y:Math.random()*100,sz:Math.random()*3+1,dur:Math.random()*20+10,delay:Math.random()*5,op:Math.random()*.4+.1}));
+  const ps = Array.from({length:6},(_,i)=>({id:i,x:Math.random()*100,y:Math.random()*100,sz:Math.random()*3+1,dur:Math.random()*20+10,delay:Math.random()*5,op:Math.random()*.3+.05}));
   return h('div',{style:{position:'fixed',inset:0,overflow:'hidden',pointerEvents:'none',zIndex:0}},
     h('div',{style:{position:'absolute',inset:0,background:'var(--bg-base)'}}),
-    h('div',{style:{position:'absolute',top:'-30%',left:'-10%',width:'500px',height:'500px',borderRadius:'50%',background:'rgba(0,240,255,.03)',filter:'blur(100px)'}}),
-    h('div',{style:{position:'absolute',bottom:'-20%',right:'-10%',width:'400px',height:'400px',borderRadius:'50%',background:'rgba(168,85,247,.04)',filter:'blur(100px)'}}),
+    // Ganti blur(100px) dengan opacity solid — jauh lebih hemat GPU
+    h('div',{style:{position:'absolute',top:'-30%',left:'-10%',width:'500px',height:'500px',borderRadius:'50%',background:'rgba(0,240,255,.015)'}}),
+    h('div',{style:{position:'absolute',bottom:'-20%',right:'-10%',width:'400px',height:'400px',borderRadius:'50%',background:'rgba(168,85,247,.02)'}}),
     ps.map(p=>h('div',{key:p.id,style:{position:'absolute',borderRadius:'50%',background:'var(--particle-color)',left:p.x+'%',top:p.y+'%',width:p.sz,height:p.sz,opacity:p.op,animation:'float '+p.dur+'s ease-in-out '+p.delay+'s infinite'}}))
   );
 }
@@ -1657,7 +1688,14 @@ function NotifBell({targetId}) {
   const reload = useCallback(async()=>{
     try{const data=await DB.getNotifications(targetId);setNotifs(data||[]);}catch(e){}
   },[targetId]);
-  useEffect(()=>{reload();const iv=setInterval(reload,5000);return()=>clearInterval(iv);},[reload]);
+  useEffect(()=>{
+    reload();
+    // Polling 30 detik, hanya saat tab aktif — hemat 6x request vs 5 detik
+    const iv=setInterval(()=>{if(!document.hidden)reload();},30000);
+    const onVis=()=>{if(!document.hidden)reload();};
+    document.addEventListener('visibilitychange',onVis);
+    return()=>{clearInterval(iv);document.removeEventListener('visibilitychange',onVis);};
+  },[reload]);
   const unread=notifs.filter(n=>!n.read).length;
   const markRead=async()=>{await DB.markNotificationsRead(targetId);reload();};
   const clearAll=async()=>{await DB.clearNotifications(targetId);setNotifs([]);};
@@ -5006,13 +5044,12 @@ function CbtExamCard({exam,student,isDemo,onStart}) {
           }catch(e){}
         }
       })()
-    ]).then(async([s])=>{
+    ]).then(async([sesRaw])=>{
       // ── Auto-detect force-exit via last_seen ─────────────────
-      // Jika status ongoing tapi last_seen > 60 detik lalu
-      // → siswa keluar paksa tanpa pagehide terpanggil
+      let s = sesRaw;
       if(s&&s.status==='ongoing'&&s.last_seen){
         const staleSec=(Date.now()-new Date(s.last_seen).getTime())/1000;
-        if(staleSec>10){// heartbeat 8 detik, toleransi 10 detik
+        if(staleSec>25){// heartbeat 20 detik, toleransi 25 detik
           const updated={...s,status:'disqualified',exited_at:new Date().toISOString()};
           try{ await DB.saveCbtSession(updated); s=updated; }catch(e){}
         }
@@ -5481,17 +5518,18 @@ if(t % saveInterval === 0 && sessionRef.current && !isDemo){
   // Heartbeat tiap 20 detik: update last_seen sebagai fallback.
   useEffect(()=>{
     if(isDemo||submitted||loading||!tokenPassed) return;
-    // Heartbeat: update last_seen tiap 20 detik
+    // Heartbeat: kirim HANYA id + last_seen — BUKAN seluruh sesi dengan foto
     const beat=()=>{
       if(sessionRef.current&&!sessionRef.current._submitted){
         const ts=new Date().toISOString();
         sessionRef.current={...sessionRef.current,last_seen:ts};
-        // Update minimal field saja
-        DB.saveCbtSession({...sessionRef.current}).catch(()=>{});
+        // PERBAIKAN: patch minimal — hemat bandwidth, tidak kirim photos[]
+        const patchUrl=`${SUPABASE_URL}/rest/v1/cbt_sessions?id=eq.`+sessionRef.current.id;
+        fetch(patchUrl,{method:'PATCH',headers:{'Content-Type':'application/json','apikey':SUPABASE_ANON_KEY,'Authorization':'Bearer '+SUPABASE_ANON_KEY,'Prefer':'return=minimal'},body:JSON.stringify({last_seen:ts})}).catch(()=>{});
       }
     };
     beat();
-    const iv=setInterval(beat,8000);
+    const iv=setInterval(beat,20000); // naik dari 8s → 20s
     // Saat keluar paksa: DISKUALIFIKASI langsung
     const markExited=()=>{
       if(sessionRef.current) sessionRef.current._appClosing=true;
@@ -6097,7 +6135,17 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
       setLoading(false);return;
     }
     try {
-      const[stu,rec,lv,an,set_,hol]=await Promise.all([DB.getStudents(),DB.getRecords(),DB.getLeaves(),DB.getAnnouncements(),DB.getSettings(),DB.getHolidays()]);
+      // Admin: ambil records 90 hari terakhir saja (bukan semua history)
+      const today = new Date(); const d90 = new Date(today); d90.setDate(today.getDate()-90);
+      const since = d90.toISOString().split('T')[0];
+      const[stu,rec,lv,an,set_,hol]=await Promise.all([
+        DB.getStudents(),
+        DB.getRecordsAdmin(since, null),
+        DB.getLeaves(),
+        DB.getAnnouncements(),
+        DB.getSettings(),
+        DB.getHolidays()
+      ]);
       setStudents(stu);setRecords(rec);setLeaves(lv);setAnns(an);setSettings(set_);setHolidays(hol);
     } catch(e) {
       console.error('AdminPanel reload error:',e);
@@ -6107,7 +6155,14 @@ function AdminPanel({onLogout,isDemo=false,adminData=null}) {
     }
   },[isDemo]);
   useEffect(()=>{reload();},[reload]);
-  useEffect(()=>{if(page!=='activity'){const iv=setInterval(reload,30000);return()=>clearInterval(iv);}},[page,reload]);
+  // Polling 5 menit hanya saat tab aktif — admin tidak perlu real-time
+  useEffect(()=>{
+    if(page==='activity') return;
+    const iv=setInterval(()=>{if(!document.hidden)reload();},300000);
+    const onVis=()=>{if(!document.hidden)reload();};
+    document.addEventListener('visibilitychange',onVis);
+    return()=>{clearInterval(iv);document.removeEventListener('visibilitychange',onVis);};
+  },[page,reload]);
 
   const saveSettings=async s=>{
     if(isDemo||!isSuperAdmin){alert('Akses ditolak: hanya Superadmin yang bisa mengubah pengaturan.');return;}await DB.saveSettings(s);setSettings(s);};
@@ -6247,8 +6302,13 @@ function StudentPanel({student,onLogout,isDemo=false}) {
       setLoading(false);return;
     }
     try{
-      const[rec,lv,set_,an]=await Promise.all([DB.getRecords(),DB.getLeaves(),DB.getSettings(),DB.getAnnouncements()]);
-      setRecords(rec.filter(r=>r.studentId===student.id));
+      const[rec,lv,set_,an]=await Promise.all([
+        DB.getRecordsByStudent(student.id),
+        DB.getLeavesByStudent(student.id),
+        DB.getSettings(),
+        DB.getAnnouncements()
+      ]);
+      setRecords(rec);
       setLeaves(lv);setSettings(set_);setAnns(an);
     }catch(e){console.error('StudentPanel reload:',e);setLoadError('Gagal memuat data. Periksa koneksi internet.');}
     finally{setLoading(false);}
@@ -6256,7 +6316,8 @@ function StudentPanel({student,onLogout,isDemo=false}) {
   useEffect(()=>{reload();},[reload]);
   useEffect(()=>{
   if(page==='activity') return;
-  const iv = setInterval(()=>{ if(!document.hidden) reload(); }, 60000);
+  // Reload tiap 2 menit, hanya saat tab aktif
+  const iv = setInterval(()=>{ if(!document.hidden) reload(); }, 120000);
   return()=>clearInterval(iv);
 },[page,reload]);
 
@@ -6516,14 +6577,21 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
       setLoading(false);return;
     }
     try {
-      const [stu, rec, lv, set_] = await Promise.all([DB.getStudents(), DB.getRecords(), DB.getLeaves(), DB.getSettings()]);
-      setStudents(stu.filter(s => s.kelas === teacher.kelas && s.active));
-      setRecords(rec);
-      setLeaves(lv.filter(l => {
-        const s = stu.find(x => x.id === l.studentId);
-        return s && s.kelas === teacher.kelas;
-      }));
+      // Fetch siswa dulu untuk dapat studentIds kelas ini
+      const [stu, set_] = await Promise.all([DB.getStudents(), DB.getSettings()]);
+      const myStudents = stu.filter(s => s.kelas === teacher.kelas && s.active);
+      setStudents(myStudents);
       setSettings(set_);
+      // Fetch records & leaves hanya untuk siswa kelas ini (90 hari terakhir)
+      const myIds = myStudents.map(s=>s.id);
+      const today = new Date(); const d90 = new Date(today); d90.setDate(today.getDate()-90);
+      const since = d90.toISOString().split('T')[0];
+      const [rec, lv] = await Promise.all([
+        DB.getRecordsAdmin(since, null),
+        DB.getLeaves()
+      ]);
+      setRecords(rec.filter(r=>myIds.includes(r.studentId)));
+      setLeaves(lv.filter(l => myIds.includes(l.studentId)));
     } catch(e) {
       console.error('WaliKelasPanel reload error:',e);
     } finally {
@@ -6532,7 +6600,13 @@ function WaliKelasPanel({teacher, onLogout, isDemo=false}) {
   }, [teacher.kelas, isDemo]);
 
   useEffect(() => { reload(); }, [reload]);
-  useEffect(()=>{const iv=setInterval(reload,30000);return()=>clearInterval(iv);},[reload]);
+  // Polling 2 menit, hanya saat tab aktif
+  useEffect(()=>{
+    const iv=setInterval(()=>{if(!document.hidden)reload();},120000);
+    const onVis=()=>{if(!document.hidden)reload();};
+    document.addEventListener('visibilitychange',onVis);
+    return()=>{clearInterval(iv);document.removeEventListener('visibilitychange',onVis);};
+  },[reload]);
 
   const nav = [
     {id:'rekap', label:'Rekap', icon:'rekap'},
@@ -7124,6 +7198,7 @@ function showInstallModal(){
 </script>
 
 <script>
+if('serviceWorker' in navigator) {
 navigator.serviceWorker.addEventListener('message',function(event){
   if(event.data&&event.data.type==='SW_UPDATED'){window.location.reload();return;}
   if(event.data&&event.data.type==='CBT_CACHE_CLEARED'){
@@ -7131,6 +7206,7 @@ navigator.serviceWorker.addEventListener('message',function(event){
     keys.forEach(function(k){sessionStorage.removeItem(k);});
   }
 });
+}
 </script>
 
 </body>
